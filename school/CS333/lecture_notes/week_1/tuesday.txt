@@ -1,0 +1,2 @@
+Week 1
+check out rchaney on babbage for bash scripts. Go to the bin directory

@@ -1,0 +1,85 @@
+Thursday 10/02
+
+Continuation of C stuff
+
+- use "man ascii" to see ascii value man page
+	- Gives values in hex, decimal, and octal
+
+- Four stages of compilation
+	- Preprocessor (starts w #)
+		- Directive often immediately directly follow the #
+		- Simply inserts included files and passes it to the next stage of compilation
+	- Compiler
+	- Assembler
+	- Linker
+
+- Four segments of a process (running in memory)
+	- Text segment
+		- Program instructions
+		- Zero address
+	- Data
+		- Global variables
+		- Static variables within a function
+	- Heap
+		- Dynamically allocated memory
+		- Grows upward
+	- Stack
+		- Starts at high memory and grows downward
+		- Function calls
+		- Grows as you call, shrinks as you return
+
+- Include files
+	- Under usr/include
+	- Do not change (system files)
+	- Custom include files always go in double quotes
+		- ex: #include "my_file.h"
+	- System include files always precede the user include files
+
+- Conditional compilation
+	- Examples
+		- #ifdef, #ifndef, #else, #elif, #endif
+	- Can help with editing and debugging code
+	- Use these to help with debug messages
+	- If you want to use it, #define DEBUG, when you are done, comment out
+
+- Macros
+	- #define THING "string"
+	- Use it once and done
+	- These are just textual substitutions
+	- Look at powerpoint for examples of macros!
+		- Especially in C Stuff #2, macros (NOISY_DEBUG_PRINT)
+
+	- Send all diagnostic messages to stderr, not stdout
+
+- Assert() macro
+	- You can sprinkle this throughout the code, and it does not affect performance
+	- #include <assert.h>
+	- Aborts the program when an error is detected
+
+- Standard I/O
+	- Can be redirected from the command line
+
+- printf()
+	- Look up format specifiers
+
+- Go to rchaney/Classes/cs333/src for examples 
+
+-----------------------------------------------------------------------
+Command line arguments
+
+- Find examples in src/argc_argv
+
+- argc
+	- How many command line params are there
+- argv
+	- Character array of pointers to CLAs
+	- argv[0] is almost always the name of the program you are running
+	- Jagged array
+
+Environment variables
+	- can access from inside program or CLI
+	- access with env
+	- can set or get environment variables within programs
+	- 
+
+

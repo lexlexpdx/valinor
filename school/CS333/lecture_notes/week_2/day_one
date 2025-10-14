@@ -1,0 +1,6 @@
+Make files
+
+- Make sure that you rename your program from ./a.out
+- Use either 'makefile' or 'Makefile' as a name for your makefile
+- Parens: variable in the make file
+- Braces: variable in ronment:

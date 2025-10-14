@@ -1,0 +1,20 @@
+Lab 1
+- Start with Makefile
+- Make sure to include all warning flags in makefile
+- Part2
+	- cae-xor cipher
+		- Shifts are based on each character (all ASCII printing characters) of the keyphrase
+		- in cs333 directory there is an isprint() function in lab1 directory
+		- spaces have a shift value of 0, good way to validate
+		- Encryption string continues to wrap around until the entire plain text is encrypted
+		- Use switch to give "help" options
+		- Consider also implementing a diagnostic option
+		- USE GETOPT
+		- Use ctrl + d to end program
+		- for many command line options (have a variable that check to see what the most recent flag is (use a bool))
+		- For many strings, use a pointer that is set to NULL, and then set it to optarg whenever a new string is noted
+- Part 3
+	- mystat
+		- Kinda like the "stat" command on a file
+		- Make sure to understand how to use mystat for the next assignment
+		- FUNNY files, use for mystat
