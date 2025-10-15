@@ -29,6 +29,7 @@ $(PROG1): $(PROG1).o
 $(PROG1).o: $(PROG1).c
 	$(CC) $(CFLAGS) -c $<
 
+
 # Non-build rules
 
 # Clean
@@ -39,6 +40,9 @@ clean cls:
 tar:
 	tar cvfa lab1_${LOGNAME}.tar.gz *.[ch] [mM]akefile
 
-
+# git revision control
+git get:
+	git add *.[ch] [mM]akefile
+	git commit
 
 
