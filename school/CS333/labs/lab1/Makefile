@@ -12,7 +12,7 @@ WERROR = -Wall -Wextra -Wshadow -Wunreachable-code -Wredundant-decls \
 	 -Wmissing-prototypes -Wdeclaration-after-statement \
 	 -Wno-return-local-addr -Wunsafe-loop-optimizations \
 	 -Wuninitialized -Werror
-CLFAGS = $(DEBUG) $(WERROR)
+CFLAGS = $(DEBUG) $(WERROR) -DNOISY_DEBUG
 PERMS = og-rx
 
 PROG1 = cae-xor
