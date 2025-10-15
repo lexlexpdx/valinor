@@ -30,6 +30,7 @@ $(PROG1).o: $(PROG1).c
 	$(CC) $(CFLAGS) -c $<
 
 
+
 # Non-build rules
 
 # Clean
@@ -42,6 +43,7 @@ tar:
 
 # git revision control
 git get:
+	git status
 	git add *.[ch] [mM]akefile
 	git commit
 
