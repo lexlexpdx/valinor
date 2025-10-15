@@ -46,5 +46,6 @@ git get:
 	git status
 	git add *.[ch] [mM]akefile
 	git commit
+	git push
 
 
