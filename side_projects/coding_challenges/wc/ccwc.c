@@ -4,13 +4,17 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define OPTIONS "clwm"
+#define OPTIONS "c:l:w:m:"
+#define BUFFER 50000
 
 
 int main(int argc, char *argv[])
 {
     FILE *file;
-    int bytes = 0;
+    char buffer[BUFFER];
+    ssize_t num;
+    size_t total = 0;
+    int fd;
 
     if (argc < 2)
     {
@@ -23,10 +27,23 @@ int main(int argc, char *argv[])
 
         while ((opt = getopt(argc, argv, OPTIONS)) != -1)
         {
-            swtich (opt)
+            switch (opt)
             {
                 case 'c':
-                    file = fopen(optarg, )
+                    file = fopen(optarg, "r");
+                    if (file == NULL)
+                    {
+                        perror("Error opening file");
+                        exit(EXIT_FAILURE);
+                    }
+                    fd = fileno(file);
+                    while ((num = read(fd, buffer, BUFFER)) > 0)
+                    {
+                        total += num;
+                    }
+                    printf("%zu %s\n", total, optarg);
+                default:
+                    break;
             }
         }
     }
