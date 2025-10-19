@@ -32,10 +32,11 @@ $(PROG1).o: $(PROG1).c
 
 
 # Non-build rules
+.PHONY: all clean cls tar git get
 
 # Clean
 clean cls:
-	rm -f $(PROGS) *.0 *~ \#*
+	rm -f $(PROGS) *.o *~ \#*
 
 # Tarball
 tar:
