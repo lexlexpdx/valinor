@@ -12,16 +12,16 @@ WERROR = -Wall -Wextra -Wshadow -Wunreachable-code -Wredundant-decls \
 	 -Wmissing-prototypes -Wdeclaration-after-statement \
 	 -Wno-return-local-addr -Wunsafe-loop-optimizations \
 	 -Wuninitialized -Werror
-CFLAGS = $(DEBUG) $(WERROR) -DNOISY_DEBUG
+CFLAGS = $(DEBUG) $(WERROR)
 PERMS = og-rx
 
 PROG1 = cae-xor
-PROG2 = 
+PROG2 = mystat
 PROG3 = 
-PROGS = $(PROG1)
+PROGS = $(PROG1) $(PROG2)
 INCLUDES = 
 
-all = $(PROGS)
+all: $(PROGS)
 
 $(PROG1): $(PROG1).o
 	$(CC) $(CFLAGS) -o $@ $^
@@ -29,6 +29,11 @@ $(PROG1): $(PROG1).o
 $(PROG1).o: $(PROG1).c
 	$(CC) $(CFLAGS) -c $<
 
+$(PROG2): $(PROG2).o
+	$(CC) $(CFLAGS) -o $@ $^
+
+$(PROG2).o: $(PROG2).c
+	$(CC) $(CFLAGS) -c $<
 
 
 # Non-build rules
