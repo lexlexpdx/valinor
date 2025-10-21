@@ -11,6 +11,8 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <pwd.h>
+#include <grp.h>
 
 #define _GNU_SOURCE
 
@@ -20,21 +22,33 @@ void print_mode(mode_t mode);
 int main(int argc, char *argv[])
 {
     struct stat sb;
+    struct passwd *pw;
+    struct group *grp;
 
+    // Checks to ensure user added file path to CLI
+    // If there are not exactly two arguments, failure will occur
     if (argc != 2)
     {
         fprintf(stderr, "Usage: %s <pathname>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
+    // Populates the stat structure 'sb' with information about the file
+    // If this fails a -1 is returned
     if (lstat(argv[1], &sb) == -1)
     {
-        perror("lstat");
+        perror("lstat failure");
         exit(EXIT_FAILURE);
     }
+
+    // Print file path
     printf("File: %s\n", argv[1]);
-    printf("%-30s %ju\n", "  Device ID number: ", (uintmax_t)sb.st_dev);
-    printf("%-31s", "  File type: ");
+
+    // Print device ID number (will be different on different machines)
+    printf("%-27s %ju\n", "  Device ID number: ", (uintmax_t)sb.st_dev);
+
+    // Print file type
+    printf("%-27s", "  File type:");
     switch (sb.st_mode & S_IFMT)
     {
         case S_IFBLK:
@@ -64,7 +78,7 @@ int main(int argc, char *argv[])
         }
         case S_IFREG:
         {
-            printf("regular file\n");
+            printf(" regular file\n");
             break;
         }
         case S_IFSOCK:
@@ -78,9 +92,43 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    printf("%-30s %ju\n", "  I-node number:", (uintmax_t) sb.st_ino);
-    //printf("%-30s %jo\n", "  Mode:", (uintmax_t) sb.st_mode);
+    
+    // Print inode information
+    printf("%-27s %ju\n", "  I-node number:", (uintmax_t) sb.st_ino);
+
+    // Print human-readable mode information
     print_mode(sb.st_mode);
+
+    // Print link count information 
+    printf("%-27s %ju\n", "  Link count:", (uintmax_t) sb.st_nlink);
+
+    // Print owner information
+    pw = getpwuid(sb.st_uid);
+    printf("%-27s %s\t\t(UID = %ju)\n", "  Owner Id:", pw->pw_name, (uintmax_t)sb.st_uid);
+
+    // Print group id information
+    grp = getgrgid(sb.st_gid);
+    printf("%-27s %s\t\t(GID = %ju)\n", "  Group Id:", grp->gr_name, (uintmax_t)sb.st_gid);
+
+    // Print Preferred I/O block size
+    printf("%-27s %jd bytes\n", "  Preferred I/O block size:", (intmax_t) sb.st_blksize);
+
+    // Print file size
+    printf("%-27s %jd bytes\n", "  File size:", (intmax_t)sb.st_size);
+
+    // Print Blocks allocated
+    printf("%-27s %jd\n", "  Blocks allocated:", (intmax_t)sb.st_blocks);
+
+    // Print LFA epoch
+    printf("%-27s %jd (seconds since the epoch)\n", "  Last file access:", (intmax_t)sb.st_atime);
+
+    // Print LFM epoch
+    printf("%-27s %jd (seconds since the epoch)\n", "  Last file modification:", (intmax_t)sb.st_mtime);
+
+    // Print LSC epoch
+    printf("%-27s %jd (seconds since the epoch)\n", "  Last status change:", (intmax_t)sb.st_ctime);
+
+
 
     return EXIT_SUCCESS;
 }
@@ -131,7 +179,7 @@ void print_mode(mode_t mode)
     octal = mode & 0777;
 
     // Formatting
-    printf("%-30s %c%s          (%03o in octal)\n",
+    printf("%-27s %c%s\t\t(%03o in octal)\n",
             "  Mode:", type, perms, octal);
 
 }
