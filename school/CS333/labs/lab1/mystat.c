@@ -15,9 +15,11 @@
 #include <grp.h>
 
 #define _GNU_SOURCE
+#define BUFFER 200
 
 // Prototypes
 void print_mode(mode_t mode);
+void print_time(time_t time);
 
 int main(int argc, char *argv[])
 {
@@ -128,6 +130,15 @@ int main(int argc, char *argv[])
     // Print LSC epoch
     printf("%-27s %jd (seconds since the epoch)\n", "  Last status change:", (intmax_t)sb.st_ctime);
 
+    // Print LFA local
+    print_time(sb.st_atime);
+
+    // Print LFM local
+    print_time(sb.st_mtime);
+
+    // Print LSC local
+    print_time(sb.st_ctime);
+
 
 
     return EXIT_SUCCESS;
@@ -182,4 +193,18 @@ void print_mode(mode_t mode)
     printf("%-27s %c%s\t\t(%03o in octal)\n",
             "  Mode:", type, perms, octal);
 
+}
+
+
+void print_time(time_t time)
+{
+    struct tm *local_time;
+    char buffer[BUFFER];
+
+    
+    local_time = localtime(&time);
+
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S %z (%Z) %a (local)\n", local_time);
+
+    printf("%-27s %s", "  Last file access:", buffer);
 }
