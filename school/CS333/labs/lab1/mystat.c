@@ -16,16 +16,23 @@
 
 #define _GNU_SOURCE
 #define BUFFER 200
+#define LFA 1
+#define LFM 2
+#define LSC 3
 
 // Prototypes
 void print_mode(mode_t mode);
-void print_time(time_t time);
+void print_time(time_t time, int time_type);
+void print_time_gmt(time_t time, int time_type);
 
 int main(int argc, char *argv[])
 {
     struct stat sb;
+    struct stat target_sb;
     struct passwd *pw;
     struct group *grp;
+    char link_target[BUFFER];
+    ssize_t link_len = 0;
 
     // Checks to ensure user added file path to CLI
     // If there are not exactly two arguments, failure will occur
@@ -46,11 +53,8 @@ int main(int argc, char *argv[])
     // Print file path
     printf("File: %s\n", argv[1]);
 
-    // Print device ID number (will be different on different machines)
-    printf("%-27s %ju\n", "  Device ID number: ", (uintmax_t)sb.st_dev);
-
     // Print file type
-    printf("%-27s", "  File type:");
+    printf("%-28s", "  File type:");
     switch (sb.st_mode & S_IFMT)
     {
         case S_IFBLK:
@@ -75,7 +79,14 @@ int main(int argc, char *argv[])
         }
         case S_IFLNK:
         {
-            printf("Symbolic link - with dangling destination\n");
+            link_len = readlink(argv[1], link_target, sizeof(link_target) - 1);
+            if (stat(link_target, &target_sb) != -1)
+            {
+                link_target[link_len] = '\0';
+                printf("Symbolic link -> %s\n", link_target);
+            }
+            else
+                printf("Symbolic link - with dangling destination\n");
             break;
         }
         case S_IFREG:
@@ -94,6 +105,8 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    // Print device ID number (will be different on different machines)
+    printf("%-27s %ju\n", "  Device ID number: ", (uintmax_t)sb.st_dev);
     
     // Print inode information
     printf("%-27s %ju\n", "  I-node number:", (uintmax_t) sb.st_ino);
@@ -131,15 +144,22 @@ int main(int argc, char *argv[])
     printf("%-27s %jd (seconds since the epoch)\n", "  Last status change:", (intmax_t)sb.st_ctime);
 
     // Print LFA local
-    print_time(sb.st_atime);
+    print_time(sb.st_atime, LFA);
 
     // Print LFM local
-    print_time(sb.st_mtime);
+    print_time(sb.st_mtime, LFM);
 
     // Print LSC local
-    print_time(sb.st_ctime);
+    print_time(sb.st_ctime, LSC);
 
+    // Print LFA GMT
+    print_time_gmt(sb.st_atime, LFA);
 
+    // Print LFM GMT
+    print_time_gmt(sb.st_mtime, LFM);
+
+    // Print LSC GMT
+    print_time_gmt(sb.st_ctime, LSC);
 
     return EXIT_SUCCESS;
 }
@@ -196,7 +216,7 @@ void print_mode(mode_t mode)
 }
 
 
-void print_time(time_t time)
+void print_time(time_t time, int time_type)
 {
     struct tm *local_time;
     char buffer[BUFFER];
@@ -205,6 +225,28 @@ void print_time(time_t time)
     local_time = localtime(&time);
 
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S %z (%Z) %a (local)\n", local_time);
+    if (time_type == LFA)
+        printf("%-27s %s", "  Last file access:", buffer);
+    else if (time_type == LFM)
+        printf("%-27s %s", "  Last file modification:", buffer);
+    else if (time_type == LSC)
+        printf("%-27s %s", "  Last status change:", buffer);
+}
 
-    printf("%-27s %s", "  Last file access:", buffer);
+
+void print_time_gmt(time_t time, int time_type)
+{
+    struct tm *gm_time;
+    char buffer[BUFFER];
+
+    
+    gm_time = gmtime(&time);
+
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S %z (%Z) %a (GMT)\n", gm_time);
+    if (time_type == LFA)
+        printf("%-27s %s", "  Last file access:", buffer);
+    else if (time_type == LFM)
+        printf("%-27s %s", "  Last file modification:", buffer);
+    else if (time_type == LSC)
+        printf("%-27s %s", "  Last status change:", buffer);
 }
