@@ -13,7 +13,7 @@
 #include <string.h>
 
 #define OPTIONS "edc:x:hD"
-#define BUFFER_SIZE 5000
+#define BUFFER_SIZE 1000000
 #define PRINT_CHAR_START 32
 #define PRINT_CHAR_END 126
 #define PRINT_RANGE (PRINT_CHAR_END - PRINT_CHAR_START + 1)

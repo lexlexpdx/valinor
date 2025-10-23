@@ -34,134 +34,134 @@ int main(int argc, char *argv[])
     char link_target[BUFFER];
     ssize_t link_len = 0;
 
-    // Checks to ensure user added file path to CLI
-    // If there are not exactly two arguments, failure will occur
-    if (argc != 2)
+    if (argc < 2)
     {
         fprintf(stderr, "Usage: %s <pathname>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    // Populates the stat structure 'sb' with information about the file
-    // If this fails a -1 is returned
-    if (lstat(argv[1], &sb) == -1)
+    for (int argi = 1; argi < argc; ++argi)
     {
-        perror("lstat failure");
-        exit(EXIT_FAILURE);
-    }
+        // Populates the stat structure 'sb' with information about the file
+        // If this fails a -1 is returned
+        if (lstat(argv[argi], &sb) == -1)
+        {
+            perror(argv[argi]);
+            continue;
+        }
 
-    // Print file path
-    printf("File: %s\n", argv[1]);
+        // Print file path
+        printf("File: %s\n", argv[argi]);
 
-    // Print file type
-    printf("%-28s", "  File type:");
-    switch (sb.st_mode & S_IFMT)
-    {
-        case S_IFBLK:
+        // Print file type
+        printf("%-28s", "  File type:");
+        switch (sb.st_mode & S_IFMT)
         {
-            printf("block device\n");
-            break;
-        }
-        case S_IFCHR:
-        {
-            printf("character device\n");
-            break;
-        }
-        case S_IFDIR:
-        {
-            printf("directory\n");
-            break;
-        }
-        case S_IFIFO:
-        {
-            printf("FIFO/pipe\n");
-            break;
-        }
-        case S_IFLNK:
-        {
-            link_len = readlink(argv[1], link_target, sizeof(link_target) - 1);
-            if (stat(link_target, &target_sb) != -1)
+            case S_IFBLK:
             {
-                link_target[link_len] = '\0';
-                printf("Symbolic link -> %s\n", link_target);
+                printf("block device\n");
+                break;
             }
-            else
-                printf("Symbolic link - with dangling destination\n");
-            break;
+            case S_IFCHR:
+            {
+                printf("character device\n");
+                break;
+            }
+            case S_IFDIR:
+            {
+                printf("directory\n");
+                break;
+            }
+            case S_IFIFO:
+            {
+                printf("FIFO/pipe\n");
+                break;
+            }
+            case S_IFLNK:
+            {
+                link_len = readlink(argv[argi], link_target, sizeof(link_target) - 1);
+                if (stat(link_target, &target_sb) != -1)
+                {
+                    link_target[link_len] = '\0';
+                    printf("Symbolic link -> %s\n", link_target);
+                }
+                else
+                    printf("Symbolic link - with dangling destination\n");
+                break;
+            }
+            case S_IFREG:
+            {
+                printf(" regular file\n");
+                break;
+            }
+            case S_IFSOCK:
+            {
+                printf("socket\n");
+                break;
+            }
+            default:
+            {
+                printf("unknown?\n");
+                break;
+            }
         }
-        case S_IFREG:
-        {
-            printf(" regular file\n");
-            break;
-        }
-        case S_IFSOCK:
-        {
-            printf("socket\n");
-            break;
-        }
-        default:
-        {
-            printf("unknown?\n");
-            break;
-        }
+        // Print device ID number (will be different on different machines)
+        printf("%-27s %ju\n", "  Device ID number: ", (uintmax_t)sb.st_dev);
+        
+        // Print inode information
+        printf("%-27s %ju\n", "  I-node number:", (uintmax_t) sb.st_ino);
+
+        // Print human-readable mode information
+        print_mode(sb.st_mode);
+
+        // Print link count information 
+        printf("%-27s %ju\n", "  Link count:", (uintmax_t) sb.st_nlink);
+
+        // Print owner information
+        pw = getpwuid(sb.st_uid);
+        printf("%-27s %s\t\t(UID = %ju)\n", "  Owner Id:", pw->pw_name, (uintmax_t)sb.st_uid);
+
+        // Print group id information
+        grp = getgrgid(sb.st_gid);
+        printf("%-27s %s\t\t(GID = %ju)\n", "  Group Id:", grp->gr_name, (uintmax_t)sb.st_gid);
+
+        // Print Preferred I/O block size
+        printf("%-27s %jd bytes\n", "  Preferred I/O block size:", (intmax_t) sb.st_blksize);
+
+        // Print file size
+        printf("%-27s %jd bytes\n", "  File size:", (intmax_t)sb.st_size);
+
+        // Print Blocks allocated
+        printf("%-27s %jd\n", "  Blocks allocated:", (intmax_t)sb.st_blocks);
+
+        // Print LFA epoch
+        printf("%-27s %jd (seconds since the epoch)\n", "  Last file access:", (intmax_t)sb.st_atime);
+
+        // Print LFM epoch
+        printf("%-27s %jd (seconds since the epoch)\n", "  Last file modification:", (intmax_t)sb.st_mtime);
+
+        // Print LSC epoch
+        printf("%-27s %jd (seconds since the epoch)\n", "  Last status change:", (intmax_t)sb.st_ctime);
+
+        // Print LFA local
+        print_time(sb.st_atime, LFA);
+
+        // Print LFM local
+        print_time(sb.st_mtime, LFM);
+
+        // Print LSC local
+        print_time(sb.st_ctime, LSC);
+
+        // Print LFA GMT
+        print_time_gmt(sb.st_atime, LFA);
+
+        // Print LFM GMT
+        print_time_gmt(sb.st_mtime, LFM);
+
+        // Print LSC GMT
+        print_time_gmt(sb.st_ctime, LSC);
     }
-    // Print device ID number (will be different on different machines)
-    printf("%-27s %ju\n", "  Device ID number: ", (uintmax_t)sb.st_dev);
-    
-    // Print inode information
-    printf("%-27s %ju\n", "  I-node number:", (uintmax_t) sb.st_ino);
-
-    // Print human-readable mode information
-    print_mode(sb.st_mode);
-
-    // Print link count information 
-    printf("%-27s %ju\n", "  Link count:", (uintmax_t) sb.st_nlink);
-
-    // Print owner information
-    pw = getpwuid(sb.st_uid);
-    printf("%-27s %s\t\t(UID = %ju)\n", "  Owner Id:", pw->pw_name, (uintmax_t)sb.st_uid);
-
-    // Print group id information
-    grp = getgrgid(sb.st_gid);
-    printf("%-27s %s\t\t(GID = %ju)\n", "  Group Id:", grp->gr_name, (uintmax_t)sb.st_gid);
-
-    // Print Preferred I/O block size
-    printf("%-27s %jd bytes\n", "  Preferred I/O block size:", (intmax_t) sb.st_blksize);
-
-    // Print file size
-    printf("%-27s %jd bytes\n", "  File size:", (intmax_t)sb.st_size);
-
-    // Print Blocks allocated
-    printf("%-27s %jd\n", "  Blocks allocated:", (intmax_t)sb.st_blocks);
-
-    // Print LFA epoch
-    printf("%-27s %jd (seconds since the epoch)\n", "  Last file access:", (intmax_t)sb.st_atime);
-
-    // Print LFM epoch
-    printf("%-27s %jd (seconds since the epoch)\n", "  Last file modification:", (intmax_t)sb.st_mtime);
-
-    // Print LSC epoch
-    printf("%-27s %jd (seconds since the epoch)\n", "  Last status change:", (intmax_t)sb.st_ctime);
-
-    // Print LFA local
-    print_time(sb.st_atime, LFA);
-
-    // Print LFM local
-    print_time(sb.st_mtime, LFM);
-
-    // Print LSC local
-    print_time(sb.st_ctime, LSC);
-
-    // Print LFA GMT
-    print_time_gmt(sb.st_atime, LFA);
-
-    // Print LFM GMT
-    print_time_gmt(sb.st_mtime, LFM);
-
-    // Print LSC GMT
-    print_time_gmt(sb.st_ctime, LSC);
-
-    return EXIT_SUCCESS;
+        return EXIT_SUCCESS;
 }
 
 
