@@ -1,7 +1,7 @@
 # Lex Albrandt
 # albrandt@pdx.edu
 # CS333
-# Lab1 Makefile
+# Lab2 Makefile
 #
 
 CC = gcc
@@ -12,14 +12,13 @@ WERROR = -Wall -Wextra -Wshadow -Wunreachable-code -Wredundant-decls \
 	 -Wmissing-prototypes -Wdeclaration-after-statement \
 	 -Wno-return-local-addr -Wunsafe-loop-optimizations \
 	 -Wuninitialized -Werror
-CFLAGS = $(DEBUG) $(WERROR)
+CFLAGS = $(DEBUG) $(WERROR) -lmd
 PERMS = og-rx
 
-PROG1 = cae-xor
-PROG2 = mystat
+PROG1 = arvik-md4
+PROG2 = 
 PROG3 = 
-PROGS = $(PROG1) $(PROG2)
-INCLUDES = 
+PROGS = $(PROG1)
 
 all: $(PROGS)
 
@@ -28,13 +27,6 @@ $(PROG1): $(PROG1).o
 
 $(PROG1).o: $(PROG1).c
 	$(CC) $(CFLAGS) -c $<
-
-$(PROG2): $(PROG2).o
-	$(CC) $(CFLAGS) -o $@ $^
-
-$(PROG2).o: $(PROG2).c
-	$(CC) $(CFLAGS) -c $<
-
 
 # Non-build rules
 .PHONY: all clean cls tar git get
