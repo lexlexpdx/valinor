@@ -12,7 +12,8 @@ WERROR = -Wall -Wextra -Wshadow -Wunreachable-code -Wredundant-decls \
 	 -Wmissing-prototypes -Wdeclaration-after-statement \
 	 -Wno-return-local-addr -Wunsafe-loop-optimizations \
 	 -Wuninitialized -Werror
-CFLAGS = $(DEBUG) $(WERROR) -lmd
+CFLAGS = $(DEBUG) $(WERROR)
+LDFLAGS = -lmd
 PERMS = og-rx
 
 PROG1 = arvik-md4
@@ -23,7 +24,7 @@ PROGS = $(PROG1)
 all: $(PROGS)
 
 $(PROG1): $(PROG1).o
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(PROG1).o: $(PROG1).c
 	$(CC) $(CFLAGS) -c $<
