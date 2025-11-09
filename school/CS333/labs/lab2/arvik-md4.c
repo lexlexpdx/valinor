@@ -112,11 +112,12 @@ void print_help(char *progname)
 
 void create_archive(char *archive_name, int argc, char *argv[], int optind)
 {
+    unsigned char padding = '\n';
     size_t name_len = 0;
     size_t position = 0;
     int archive_fd = -1;
     int file_fd = -1;
-    char *file_name = NULL;
+    char *file_name= NULL;
     mode_t new_mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;          // rw-rw-r permissions
     arvik_header_t new_header;
     arvik_footer_t new_footer;
@@ -262,6 +263,12 @@ void create_archive(char *archive_name, int argc, char *argv[], int optind)
             MD4Update(&md4_ctx, buffer, bytes_read);
         }
 
+        if (sb.st_size % 2 != 0)
+        {
+            write(archive_fd, &padding, 1);
+            MD4Update(&md4_ctx, &padding, 1);
+        }
+
         MD4Final(md4_data_digest, &md4_ctx);
 
         // convert data MD4 to hex as with header data
@@ -278,6 +285,7 @@ void create_archive(char *archive_name, int argc, char *argv[], int optind)
 
         // write header MD4 to archive
         write(archive_fd, md4_header_hex, 32);
+
 
         // write footer data to archive
         write(archive_fd, new_footer.md4sum_data, 32);
