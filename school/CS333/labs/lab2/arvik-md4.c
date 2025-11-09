@@ -30,13 +30,13 @@
 // Prototypes
 void print_help(char *progname);
 void create_archive(char *archive_name, int argc, char *argv[], int optind);
-//void table_of_contents(char *archive_name, bool is_verbose);
+void table_of_contents(char *archive_name, bool is_verbose);
 
 int main(int argc, char *argv[])
 {
     int mode_flag = -1;
     char *archive_name = NULL;
-    //bool verbose = false;
+    bool verbose = false;
 
     // getopt structure
     {
@@ -68,9 +68,7 @@ int main(int argc, char *argv[])
                     break;
                 // verbose
                 case 'v':
-                    // this will be in file print function
-                    // gives mode, uid, gid, size, mtime, header md4, data md4
-                    //verbose = true;
+                    verbose = true;
                     break;
                 // validate
                 case 'V':
@@ -90,7 +88,9 @@ int main(int argc, char *argv[])
     else if (mode_flag == VALIDATE)
         printf("Do validate thing\n");
     else if (mode_flag == TABLE)
-        printf("Do table of contents thing\n");
+    {
+        table_of_contents(archive_name, verbose);
+    }
 
 
     return EXIT_SUCCESS;
@@ -291,4 +291,56 @@ void create_archive(char *archive_name, int argc, char *argv[], int optind)
     if (archive_fd != STDOUT_FILENO)
         close(archive_fd);
 
+}
+
+
+void table_of_contents(char *file_name, bool is_verbose)
+{
+    off_t file_skip;
+    int iarch = STDIN_FILENO;
+    char buffer[BUFFER_SIZE];
+    arvik_header_t metadata;
+    arvik_footer_t metadata_foot;
+    char *back_pos = NULL;
+    char size_buffer[ARVIK_SIZE_LEN + 2] = {0};
+
+    if (file_name != NULL)
+    {
+        iarch = open(file_name, O_RDONLY);
+    }
+
+    read(iarch, buffer, strlen(ARVIK_TAG));
+
+    if (strncmp(buffer, ARVIK_TAG, strlen(ARVIK_TAG)) != 0)
+    {
+        fprintf(stderr, "Invalid arvik file\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while(read(iarch, &metadata, sizeof(arvik_header_t)) > 0)
+    {
+        memset(buffer, 0, BUFFER_SIZE);
+        strncpy(buffer, metadata.arvik_name, ARVIK_NAME_LEN);
+        if ((back_pos = strchr(buffer, ARVIK_NAME_TERM)))
+        {
+            *back_pos = '\0';
+        }
+        printf("%s\n", buffer);
+
+        memset(size_buffer, 0, sizeof(size_buffer));
+        memcpy(size_buffer, metadata.arvik_size, ARVIK_SIZE_LEN);
+        file_skip = atoi(size_buffer);
+        if (file_skip % 2 != 0)
+            file_skip += 1;
+        lseek(iarch, file_skip, SEEK_CUR);
+        read(iarch, &metadata_foot, sizeof(arvik_footer_t));
+    }
+
+    if (file_name != NULL)
+    {
+        close(iarch);
+    }
+
+    if (is_verbose)
+        printf("It's verbose");
 }
