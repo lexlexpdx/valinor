@@ -35,7 +35,7 @@ void print_help(char *progname);
 void create_archive(char *archive_name, int argc, char *argv[], int optind);
 void table_of_contents(char *archive_name, bool is_verbose);
 void print_mode(char *mode);
-void extract_archive(char *archive_name);
+void extract_archive(char *file_name, bool is_verbose);
 
 int main(int argc, char *argv[])
 {
@@ -89,7 +89,9 @@ int main(int argc, char *argv[])
     }
 
     else if (mode_flag == EXTRACT)
-        printf("Do extract thing\n");
+    {
+        extract_archive(archive_name, verbose);
+    }
     else if (mode_flag == VALIDATE)
         printf("Do validate thing\n");
     else if (mode_flag == TABLE)
@@ -156,6 +158,8 @@ void create_archive(char *archive_name, int argc, char *argv[], int optind)
         perror("open archive");
         exit(EXIT_FAILURE);
     }
+
+    fchmod(archive_fd, new_mode);
 
     // write arvik tag at beginning of every new arvik archive file
     write(archive_fd, ARVIK_TAG, strlen(ARVIK_TAG));
@@ -396,9 +400,6 @@ void table_of_contents(char *file_name, bool is_verbose)
     {
         close(iarch);
     }
-
-    if (is_verbose)
-        printf("It's verbose");
 }
 
 
@@ -432,4 +433,112 @@ void print_mode(char *string_mode)
     
     // Formatting
     printf("\tmode:%15s\n", perms);
+}
+
+
+void extract_archive(char *archive_name, bool is_verbose)
+{
+    int archive_fd = STDIN_FILENO;
+    char arv_tag_buf[strlen(ARVIK_TAG)];
+    int output_fd;
+    mode_t file_mode;
+    arvik_header_t metadata_head;
+    arvik_footer_t metadata_foot;
+    char buffer[BUFFER_SIZE];
+    char *back_pos = NULL;
+    char *file_name;
+    size_t file_size;
+    size_t to_read;
+    ssize_t bytes_read;
+    size_t chunk_size;
+    mode_t old_umask = umask(0);
+
+    if (archive_name != NULL)
+    {
+        archive_fd = open(archive_name, O_RDONLY);
+        if (archive_fd < 0)
+        {
+            perror("open archive");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    bytes_read = read(archive_fd, arv_tag_buf, sizeof(arv_tag_buf));
+    arv_tag_buf[bytes_read] = '\0';
+
+    if (strncmp(arv_tag_buf, ARVIK_TAG, strlen(ARVIK_TAG)) != 0)
+    {
+        fprintf(stderr, "Invalid arvik file\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while(read(archive_fd, &metadata_head, sizeof(arvik_header_t)) > 0)
+    {
+        memset(buffer, 0, BUFFER_SIZE);
+        memcpy(buffer, metadata_head.arvik_name, ARVIK_NAME_LEN);
+        buffer[ARVIK_NAME_LEN] = '\0';
+        if ((back_pos = strchr(buffer, ARVIK_NAME_TERM)))
+        {
+            *back_pos = '\0';
+        }
+        
+        file_name = buffer;
+        if (is_verbose)
+            printf("x - %s\n", file_name);
+        file_mode = (mode_t)strtoul(metadata_head.arvik_mode, NULL, 8);
+
+        output_fd = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, file_mode);
+        umask(old_umask);
+
+        if (output_fd < 0)
+        {
+            perror(file_name);
+            file_size = (size_t)strtoul(metadata_head.arvik_size, NULL, 10);
+            lseek(archive_fd, file_size + (file_size % 2) + sizeof(arvik_footer_t), SEEK_CUR);
+            continue;
+        }
+
+        file_size = (size_t)strtoul(metadata_head.arvik_size, NULL, 10);
+        to_read = file_size;
+        while (to_read > 0)
+        {
+            if (to_read > BUFFER_SIZE)
+            {
+                chunk_size = BUFFER_SIZE;
+            }
+            else
+            {
+                chunk_size = to_read;
+            }
+            bytes_read = read(archive_fd, buffer, chunk_size);
+            if (bytes_read <= 0)
+            {
+                perror("read from archive");
+                break;
+            }
+            if (write(output_fd, buffer, bytes_read) != bytes_read)
+            {
+                perror("write to file");
+                break;
+            }
+            to_read -= bytes_read;
+        }
+
+        if (file_size % 2 != 0)
+        {
+            lseek(archive_fd, 1, SEEK_CUR);
+        }
+
+
+        read(archive_fd, &metadata_foot, sizeof(arvik_footer_t));
+        
+        close(output_fd);
+        
+    }
+
+
+
+    if (is_verbose)
+        printf("it's verbose");
+
 }
