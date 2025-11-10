@@ -36,6 +36,7 @@ void create_archive(char *archive_name, int argc, char *argv[], int optind);
 void table_of_contents(char *archive_name, bool is_verbose);
 void print_mode(char *mode);
 void extract_archive(char *file_name, bool is_verbose);
+void md4_validation(char *archive_name, bool is_verbose);
 
 int main(int argc, char *argv[])
 {
@@ -93,7 +94,9 @@ int main(int argc, char *argv[])
         extract_archive(archive_name, verbose);
     }
     else if (mode_flag == VALIDATE)
-        printf("Do validate thing\n");
+    {
+        md4_validation(archive_name, verbose);
+    }
     else if (mode_flag == TABLE)
     {
         table_of_contents(archive_name, verbose);
@@ -535,10 +538,114 @@ void extract_archive(char *archive_name, bool is_verbose)
         close(output_fd);
         
     }
+}
 
+
+void md4_validation(char *archive_name, bool is_verbose)
+{
+    unsigned char md4_header_digest[DIGEST_SIZE];
+    unsigned char md4_data_digest[DIGEST_SIZE];
+    char md4_header_hex[HEX_DIGEST_SIZE];
+    char md4_data_hex[HEX_DIGEST_SIZE];
+    arvik_header_t metadata_head;
+    arvik_footer_t metadata_foot;
+    MD4_CTX md4_ctx;
+    ssize_t bytes_read = -1;
+    int archive_fd = STDIN_FILENO;
+    char arv_tag_buf[strlen(ARVIK_TAG)];
+    size_t file_size;
+    size_t remaining;
+    size_t chunk_size;
+    unsigned char buffer[BUFFER_SIZE];
+
+
+    if (archive_name != NULL)
+    {
+        archive_fd = open(archive_name, O_RDONLY);
+        if (archive_fd < 0)
+        {
+            perror("open archive");
+        exit(EXIT_FAILURE);
+        }
+    }
+
+    bytes_read = read(archive_fd, arv_tag_buf, strlen(ARVIK_TAG));
+    if (bytes_read < (ssize_t)strlen(ARVIK_TAG))
+    {
+        fprintf(stderr, "Encountered EOF while reading tag\n");
+        exit(EXIT_FAILURE);
+    }
+    arv_tag_buf[bytes_read] = '\0';
+
+    if (strncmp(arv_tag_buf, ARVIK_TAG, strlen(ARVIK_TAG)) != 0)
+    {
+        fprintf(stderr, "Invalid arvik file\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while (read(archive_fd, &metadata_head, sizeof(arvik_header_t)) > 0)
+    {
+        MD4Init(&md4_ctx);
+        MD4Update(&md4_ctx, (uint8_t *)&metadata_head, sizeof(arvik_header_t));
+        MD4Final(md4_header_digest, &md4_ctx);
+
+        for (int j = 0; j < DIGEST_SIZE; j++)
+        {
+            snprintf(md4_header_hex + 2 * j, HEX_DIGIT_BUFF, "%02x", md4_header_digest[j]);
+        }
+        md4_header_hex[32] = '\0';
+
+        MD4Init(&md4_ctx);
+        file_size = strtoul(metadata_head.arvik_size, NULL, 10);
+        remaining = file_size;
+
+        while (remaining > 0)
+        {
+            if (remaining > BUFFER_SIZE)
+            {
+                chunk_size = BUFFER_SIZE;
+            }
+            else
+            {
+                chunk_size = remaining;
+            }
+            bytes_read = read(archive_fd, buffer, chunk_size);
+            if (bytes_read <= 0)
+            {
+                perror("read from archive");
+                break;
+            }
+            MD4Update(&md4_ctx, buffer, bytes_read);
+            remaining -= bytes_read;
+        }
+
+        if (file_size % 2 != 0)
+        {
+            lseek(archive_fd, 1, SEEK_CUR);
+        }
+
+        MD4Final(md4_data_digest, &md4_ctx);
+
+        read(archive_fd, &metadata_foot, sizeof(arvik_footer_t));
+
+        for (int j = 0; j < DIGEST_SIZE; j++)
+        {
+            snprintf(md4_data_hex + 2 * j, HEX_DIGIT_BUFF, "%02x", md4_data_digest[j]);
+        }
+        md4_data_hex[32] = '\0';
+
+        printf("Stored header data: %s\n", metadata_foot.md4sum_header);
+        printf("Computed md4 header: %s\n", md4_header_hex);
+        printf("Stored data md4: %s\n", metadata_foot.md4sum_data);
+        printf("Computed data md4: %s\n", md4_data_hex);
+
+    }
 
 
     if (is_verbose)
-        printf("it's verbose");
+        printf("It's verbose");
+
+    if (archive_fd != STDIN_FILENO)
+        close(archive_fd);
 
 }
