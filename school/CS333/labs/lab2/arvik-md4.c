@@ -13,6 +13,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
 
 // Local includes
 #include "arvik.h"
@@ -31,6 +34,8 @@
 void print_help(char *progname);
 void create_archive(char *archive_name, int argc, char *argv[], int optind);
 void table_of_contents(char *archive_name, bool is_verbose);
+void print_mode(char *mode);
+void extract_archive(char *archive_name);
 
 int main(int argc, char *argv[])
 {
@@ -263,6 +268,7 @@ void create_archive(char *archive_name, int argc, char *argv[], int optind)
             MD4Update(&md4_ctx, buffer, bytes_read);
         }
 
+        // Adds in line padding if the data size is odd
         if (sb.st_size % 2 != 0)
         {
             write(archive_fd, &padding, 1);
@@ -304,7 +310,15 @@ void create_archive(char *archive_name, int argc, char *argv[], int optind)
 
 void table_of_contents(char *file_name, bool is_verbose)
 {
+    time_t mtime;
+    struct tm *time;
+    char time_buffer[BUFFER_SIZE];
+    uid_t uid;
+    uid_t grp_id;
+    size_t size;
     off_t file_skip;
+    struct passwd *pass;
+    struct group *grp;
     int iarch = STDIN_FILENO;
     char buffer[BUFFER_SIZE];
     arvik_header_t metadata;
@@ -333,7 +347,41 @@ void table_of_contents(char *file_name, bool is_verbose)
         {
             *back_pos = '\0';
         }
-        printf("%s\n", buffer);
+        if (!is_verbose)
+            printf("%s\n", buffer);
+        
+        else
+        {
+            // Print file name
+            printf("file name: %s\n", buffer);
+            
+            // Print mode data
+            print_mode(metadata.arvik_mode);
+
+            // Print owner info
+            uid =  (uid_t)strtoul(metadata.arvik_uid, NULL, 10);
+            pass = getpwuid(uid);
+            printf("\tuid:  %15u  %s\n", uid, pass->pw_name);
+
+            // print group info
+            grp_id = (uid_t)strtoul(metadata.arvik_gid, NULL, 10);
+            grp = getgrgid(grp_id);
+            printf("\tgid:  %15u  %s\n", grp_id, grp->gr_name);
+
+            // print size
+            size = (size_t)strtoul(metadata.arvik_size, NULL, 10);
+            printf("\tsize:  %14zu  bytes\n", size);
+
+            // Print time
+            mtime = (time_t)strtoul(metadata.arvik_date, NULL, 10);
+            time = localtime(&mtime);
+            strftime(time_buffer, sizeof(time_buffer), "%b %e %H:%M %Y", time);
+            printf("\tmtime:      %s\n", time_buffer);
+
+            // print md4 data
+            printf("\theader md4: %.32s\n", metadata_foot.md4sum_header);
+            printf("\tdata md4:   %.32s\n", metadata_foot.md4sum_data);
+        }
 
         memset(size_buffer, 0, sizeof(size_buffer));
         memcpy(size_buffer, metadata.arvik_size, ARVIK_SIZE_LEN);
@@ -351,4 +399,37 @@ void table_of_contents(char *file_name, bool is_verbose)
 
     if (is_verbose)
         printf("It's verbose");
+}
+
+
+void print_mode(char *string_mode)
+{
+    //char type;
+    char perms[10];
+    mode_t mode;
+    
+    // convert string to octal
+    mode = strtoul(string_mode, NULL, 8);
+
+    // File Permissions
+    // User perms
+    perms[0] = (mode & S_IRUSR) ? 'r' : '-';
+    perms[1] = (mode & S_IWUSR) ? 'w' : '-';
+    perms[2] = (mode & S_IXUSR) ? 'x' : '-';
+
+    // Group perms
+    perms[3] = (mode & S_IRGRP) ? 'r' : '-';
+    perms[4] = (mode & S_IWGRP) ? 'w' : '-';
+    perms[5] = (mode & S_IXGRP) ? 'x' : '-';
+
+    // Other perms
+    perms[6] = (mode & S_IROTH) ? 'r' : '-';
+    perms[7] = (mode & S_IWOTH) ? 'w' : '-';
+    perms[8] = (mode & S_IXOTH) ? 'x' : '-';
+
+    // Null-terminate
+    perms[9] = '\0';
+    
+    // Formatting
+    printf("\tmode:%15s\n", perms);
 }
