@@ -38,7 +38,7 @@ clean cls:
 
 # Tarball
 tar:
-	tar cvfa lab1_${LOGNAME}.tar.gz *.[ch] [mM]akefile
+	tar cvfa lab2_${LOGNAME}.tar.gz *.[c] [mM]akefile
 
 # git revision control
 git get:
