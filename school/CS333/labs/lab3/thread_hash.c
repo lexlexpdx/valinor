@@ -155,8 +155,8 @@ void print_help(char *progname)
     fprintf(stderr, "\tOptions: [%s]\n", OPTIONS);
     fprintf(stderr, "\t\t-i file          hash file name (required)\n");
     fprintf(stderr, "\t\t-o file          output file name (default stdout)\n");
-    fprintf(stderr, "\t\t-d file          dictionary file name (default stdout)\n");
-    fprintf(stderr, "\t\t-t #             number of threads to create (default 1)\n");
+    fprintf(stderr, "\t\t-d file          dictionary file name (required)\n");
+    fprintf(stderr, "\t\t-t #             number of threads to create (default == 1)\n");
     fprintf(stderr, "\t\t-n               renice to 10\n");
     fprintf(stderr, "\t\t-v               enable verbose mode\n");
     fprintf(stderr, "\t\t-h               helpful text\n");
