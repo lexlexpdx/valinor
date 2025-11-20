@@ -17,10 +17,8 @@
 #define FILE_READ_ERR 4                         // Exit value for file read error
 #define OPTIONS "i:o:d:hvt:n"                   // Options for getopt
 #define BUFFER 1000                             // Buffer size 1000
-#define MAX_PASSWORDS 200                       // Max number of passwords
-#define MAX_PASS_LEN 256                        // Max password length
-#define MAX_HASHES 200                          // Max hashes
-#define MAX_HASH_LEN 256                        // Max hash length
+#define MAX_STRINGS 1000                        // Max number of strings
+#define MAX_STRING_LEN 256                      // Max password length
 
 #ifndef NICE_VALUE                              // Defines the nice value
 # define NICE_VALUE 10
@@ -28,15 +26,7 @@
 
 // Prototypes
 void print_help(char *progname);
-void read_passwords(char *filename, char ** passwords, int *count);
-
-// Structs
-struct hashes
-{
-    char *salt;
-    char *hash;
-    char *algorithm;
-};
+void read_lines(char *filename, char ** info_array, int *count);
 
 
 int main(int argc, char *argv[])
@@ -45,15 +35,15 @@ int main(int argc, char *argv[])
     //int num_threads = 1;                      // Default number of threads
     // char output_file;                        // File used for output results
     char *input_file = NULL;                    // File used for input
-    //char **dict_file;                           // File used for dictionary
-    int password_count;                         // Number of passwords read
-    //int hash_count;                             // Number of hashes read
+    char *dict_file = NULL;                     // File used for dictionary
+    int password_count = 0;                     // Number of passwords read
+    int hash_count = 0;                         // Number of hashes read
     char **passwords;                           // Array of char pointers for password strings
-    struct hashes *hash_entries;
+    char **hashes;                              // Array of pointes for hash strings
 
     // Initialize passwords to NULL
     // DON'T FORGET TO FREE THIS MEMORY!!!
-    passwords = calloc(MAX_PASSWORDS, sizeof(char *));
+    passwords = calloc(MAX_STRINGS, sizeof(char *));
 
     // check for calloc failure
     if (!passwords)
@@ -64,10 +54,10 @@ int main(int argc, char *argv[])
 
     // Initialize hash_entries to null
     // DON'T FORGET TO FREE THIS MEMORY!!!
-    hash_entries= calloc(MAX_HASHES, sizeof(char *));
+    hashes = calloc(MAX_STRINGS, sizeof(char *));
 
     // check for calloc failure
-    if (!hash_entries)
+    if (!hashes)
     {
         fprintf(stderr, "Memory allocation failure\n");
         exit(CALLOC_FAILURE);
@@ -89,7 +79,7 @@ int main(int argc, char *argv[])
                 case 'i':
                 {
                     input_file = optarg;
-                    read_passwords(input_file, passwords, &password_count);
+                    read_lines(input_file, passwords, &password_count);
                     break;
                 }
                 // Ouput file name
@@ -104,7 +94,8 @@ int main(int argc, char *argv[])
                 // Required
                 case 'd':
                 {
-                   // dict_file = optarg;
+                    dict_file = optarg;
+                    read_lines(dict_file, hashes, &hash_count);
                     break;
                 }
                 // Help options
@@ -172,15 +163,15 @@ void print_help(char *progname)
 }
 
 
-// Read passwords from the file parsed in getopt (or stdin),
-// populates a char ** with pointers to each password string
+// Read lines from the file parsed in getopt (or stdin),
+// populates a char ** with pointers to each string
 // Args: filename (char *), count (int *)
 // Returns: none
-void read_passwords(char *filename, char **passwords, int *count)
+void read_lines(char *filename, char **info_array, int *count)
 {
     FILE *file;
     int index = 0;
-    char buffer[MAX_PASS_LEN];
+    char buffer[MAX_STRING_LEN];
     size_t len;
 
     file = fopen(filename, "r");
@@ -190,7 +181,7 @@ void read_passwords(char *filename, char **passwords, int *count)
         exit(FILE_READ_ERR);
     }
 
-    while (fgets(buffer, sizeof(buffer), file) && index < MAX_PASSWORDS)
+    while (fgets(buffer, sizeof(buffer), file) && index < MAX_STRINGS)
     {
         len = strlen(buffer);
         // replaces the newline character with null terminator
@@ -198,7 +189,7 @@ void read_passwords(char *filename, char **passwords, int *count)
         {
             buffer[len - 1] = '\0';
         }
-        passwords[index] = strdup(buffer);
+        info_array[index] = strdup(buffer);
         index++;
     }
     fclose(file);
