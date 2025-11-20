@@ -10,6 +10,7 @@
 #include <unistd.h>                             // Allows for nice(), among other things
 #include <crypt.h>                              // Allows for use of crypt()
 #include <string.h>                             // Allows for use of memcpy/memset
+#include <pthread.h>                            // Allows for use of threads
 
 // Macros
 #define BAD_OPTION 2                            // Exit value for bad command line option
@@ -27,6 +28,8 @@
 // Prototypes
 void print_help(char *progname);
 void read_lines(char *filename, char ** info_array, int *count);
+void password_crack_helper(void);
+int get_next_row(void);
 
 
 int main(int argc, char *argv[])
@@ -165,7 +168,7 @@ void print_help(char *progname)
 
 // Read lines from the file parsed in getopt (or stdin),
 // populates a char ** with pointers to each string
-// Args: filename (char *), count (int *)
+// Args: filename (char *), info_array(char **), count (int *)
 // Returns: none
 void read_lines(char *filename, char **info_array, int *count)
 {
@@ -195,4 +198,21 @@ void read_lines(char *filename, char **info_array, int *count)
     fclose(file);
     // may not need count, but it's there if I do
     *count = index;
+}
+
+
+// Function to get the next row in a thread-safe way
+// Args: none
+// Returns: current_row (int)
+int get_next_row(void)
+{
+    static int next_row = 0;
+    static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+    int curr_row = 0;
+
+    pthread_mutex_lock(&lock);                                      // Initiates mutex lock
+    curr_row = next_row++;
+    pthread_mutex_unlock(&lock);                                    // Unlocks mutex
+
+    return curr_row;
 }
