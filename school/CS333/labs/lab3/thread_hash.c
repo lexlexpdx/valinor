@@ -10,7 +10,7 @@
 #include <unistd.h>                             // Allows for nice(), among other things
 #include <crypt.h>                              // Allows for use of crypt()
 #include <string.h>                             // Allows for use of memcpy/memset
-#include <pthread.h>                            // Allows for use of threads
+#include <pthread.h>                            // Allows for use of pthreads
 
 // Macros
 #define BAD_OPTION 2                            // Exit value for bad command line option
@@ -21,21 +21,45 @@
 #define MAX_STRINGS 1000                        // Max number of strings
 #define MAX_STRING_LEN 256                      // Max password length
 
+
 #ifndef NICE_VALUE                              // Defines the nice value
 # define NICE_VALUE 10
 #endif // NICE_VALUE
 
+// Structs
+typedef struct hash_algs
+{
+    int DES_count;
+    int NT_count;
+    int MD5_count;
+    int SHA_256_count;
+    int SHA_512_count;
+    int yescrypt_count;
+    int gostyes_count;
+    int bcrypt_count;
+}hash_algs_t;
+
+typedef struct thread_data
+{
+    char **hashes;
+    char **passwords;
+    hash_algs_t *hash_types;
+    int hash_count;
+    int password_count;
+}thread_data_t;
+
 // Prototypes
 void print_help(char *progname);
 void read_lines(char *filename, char ** info_array, int *count);
-void password_crack_helper(void);
-int get_next_row(void);
+//void password_crack_helper(char **hashes, char **passwords, hash_algs_t *hash_types, int hash_count, int password_count);
+void *password_crack_helper(void *arg);
+int get_next_row(int total_hashes);
 
 
 int main(int argc, char *argv[])
 {
     //bool verbose = false;                     // Indicates verbose option selection
-    //int num_threads = 1;                      // Default number of threads
+    int num_threads = 1;                        // Default number of threads
     // char output_file;                        // File used for output results
     char *input_file = NULL;                    // File used for input
     char *dict_file = NULL;                     // File used for dictionary
@@ -43,6 +67,10 @@ int main(int argc, char *argv[])
     int hash_count = 0;                         // Number of hashes read
     char **passwords;                           // Array of char pointers for password strings
     char **hashes;                              // Array of pointes for hash strings
+    pthread_t *threads = NULL;                  // Pointer array for threads
+    long tid = 0;                               // Thread identifier
+    hash_algs_t hash_types;                     // Struct for hash types
+    thread_data_t thread_data;                  // Struct for thread data
 
     // Initialize passwords to NULL
     // DON'T FORGET TO FREE THIS MEMORY!!!
@@ -66,6 +94,8 @@ int main(int argc, char *argv[])
         exit(CALLOC_FAILURE);
     }
 
+    // Initialize all values in struct to 0
+    memset(&hash_types, 0, sizeof(hash_algs_t));
 
 
     // getopt structure
@@ -82,7 +112,7 @@ int main(int argc, char *argv[])
                 case 'i':
                 {
                     input_file = optarg;
-                    read_lines(input_file, passwords, &password_count);
+                    read_lines(input_file, hashes, &hash_count);
                     break;
                 }
                 // Ouput file name
@@ -98,7 +128,7 @@ int main(int argc, char *argv[])
                 case 'd':
                 {
                     dict_file = optarg;
-                    read_lines(dict_file, hashes, &hash_count);
+                    read_lines(dict_file, passwords, &password_count);
                     break;
                 }
                 // Help options
@@ -118,7 +148,7 @@ int main(int argc, char *argv[])
                 // Required if -t option selected
                 case 't':
                 {
-                    //num_threads = optarg;
+                    num_threads = atoi(optarg);
                     break;
                 }
                 // Apply nice function
@@ -128,6 +158,8 @@ int main(int argc, char *argv[])
                 // Note: NICE_VALUE = 10 in .h file
                 case 'n':
                 {
+                    // Just call once
+                    // I need 
                     nice(NICE_VALUE);
                     break;
                 }
@@ -137,11 +169,46 @@ int main(int argc, char *argv[])
                     exit (BAD_OPTION);
                     break;
                 }
+                
 
             }
 
         }
     }
+
+    // Initialize thread_data struct
+    thread_data.hashes = hashes;
+    thread_data.passwords = passwords;
+    thread_data.hash_count = hash_count;
+    thread_data.password_count = password_count;
+    thread_data.hash_types = &hash_types;
+
+    // Initialize threads array
+    // Since we don't know how many threads we need, we need to allocate
+    // the memory dynamically
+    threads = malloc(num_threads * sizeof(pthread_t));
+
+    for (tid = 0; tid < num_threads; tid++)
+    {
+        pthread_create(&threads[tid], NULL, password_crack_helper, &thread_data);
+    }
+    for (tid = 0; tid < num_threads; tid++)
+    {
+        pthread_join(threads[tid], NULL);
+    }
+
+    for (int i = 0; i < password_count; i++)
+    {
+        free(passwords[i]);
+    }
+
+    for (int i = 0; i < hash_count; i++)
+    {
+        free(hashes[i]);
+    }
+
+    free(hashes);
+    free(threads);
 
     return EXIT_SUCCESS;
 }
@@ -160,7 +227,7 @@ void print_help(char *progname)
     fprintf(stderr, "\t\t-o file          output file name (default stdout)\n");
     fprintf(stderr, "\t\t-d file          dictionary file name (required)\n");
     fprintf(stderr, "\t\t-t #             number of threads to create (default == 1)\n");
-    fprintf(stderr, "\t\t-n               renice to 10\n");
+    fprintf(stderr, "\t\t-n               re-nice to 10\n");
     fprintf(stderr, "\t\t-v               enable verbose mode\n");
     fprintf(stderr, "\t\t-h               helpful text\n");
 }
@@ -204,15 +271,117 @@ void read_lines(char *filename, char **info_array, int *count)
 // Function to get the next row in a thread-safe way
 // Args: none
 // Returns: current_row (int)
-int get_next_row(void)
+int get_next_row(int total_hashes)
 {
-    static int next_row = 0;
+    static int next_hash = 0;                                        
     static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-    int curr_row = 0;
+    int curr_hash = 0;
 
     pthread_mutex_lock(&lock);                                      // Initiates mutex lock
-    curr_row = next_row++;
+    curr_hash = next_hash++;                                          // This is our CRITICAL RESOURCE
     pthread_mutex_unlock(&lock);                                    // Unlocks mutex
 
-    return curr_row;
+    if (curr_hash < total_hashes)
+        return curr_hash;
+    else
+        return -1;
 }
+
+
+// Function for cracking passwords using crypt_rn()
+// This function will also compare and see if hashes are cracked or not
+// As well as extract the algorithm name for counting
+// Args: hashes (char **), passwords (char **), hash_count(int), password_count (int)
+// Returns: none
+//void password_crack_helper(char **hashes, char **passwords, hash_algs_t *hash_types, int hash_count, int password_count)
+void *password_crack_helper(void *arg)
+{
+    struct crypt_data crypt_info;                                           // Structure to pass to crypt_rn()
+    char *alg_name = NULL;                                                  // Variable for algorithm name
+    int hash_index = 0;                                                     // Variable for hash index
+    char *target_hash = NULL;                                               // Variable for hash string
+    char *result = NULL;                                                    // Variable for result from crypt_rn()
+    char buffer[BUFFER];                                                    // Buffer for strtok
+    thread_data_t *data = (thread_data_t *)arg;
+    static pthread_mutex_t counter_lock = PTHREAD_MUTEX_INITIALIZER;        // Mutex lock
+
+    // Initialize the crypt_data structure
+    // Sets everything to 0
+    memset(&crypt_info, 0, sizeof(crypt_info));
+
+    // For loop to loop through each array of passwords and hashes
+    // We want to extract the alg name for each line that is being read
+    for (hash_index = get_next_row(data->hash_count); hash_index != -1 ; hash_index = get_next_row(data->hash_count))
+    {
+        target_hash = data->hashes[hash_index];
+        
+        // this section parses the algorithm name from the hash
+        if (data->hashes[hash_index][0] == '$')
+        {
+            strncpy(buffer, data->hashes[hash_index], sizeof(buffer) - 1); // Copies hash string into buffer for parsing
+            buffer[sizeof(buffer) - 1] = '\0'; // Ensure null-termination
+
+            strtok(buffer, "$");                            // Skips the first $, first pass is the string
+            alg_name = strtok(NULL, "$");                   // Parses the algorithm
+        }
+        else
+        {
+            alg_name = "DES";
+        }
+
+        // this section increments the total number of each hash algorithm based on parsed info
+        // Protect with mutex lock!
+        pthread_mutex_lock(&counter_lock);
+        if (strcmp(alg_name, "3") == 0)
+
+        {
+            data->hash_types->NT_count++;
+        }
+        else if (strcmp(alg_name, "1") == 0)
+        {
+            data->hash_types->MD5_count++;
+        }
+        else if (strcmp(alg_name, "5") == 0)
+        {
+            data->hash_types->SHA_256_count++;
+        }
+        else if (strcmp(alg_name, "6") == 0)
+        {
+            data->hash_types->SHA_512_count++;
+        }
+        else if (strcmp(alg_name, "y") == 0)
+        {
+            data->hash_types->yescrypt_count++;
+        }
+        else if (strcmp(alg_name, "gy") == 0)
+        {
+            data->hash_types->gostyes_count++;
+        }
+        else if (strcmp(alg_name, "2b") == 0)
+        {
+            data->hash_types->bcrypt_count++;
+        }
+        else if (strcmp(alg_name, "DES") == 0)
+        {
+            data->hash_types->DES_count++;
+        }
+        // Unlock the mutex lock!
+        pthread_mutex_unlock(&counter_lock);
+
+        // check each password against the hash
+        for (int p = 0; p < data->password_count; p++)
+        {
+            result = crypt_rn(data->passwords[p], target_hash, &crypt_info, sizeof(crypt_info));
+            if (result && (strcmp(result, target_hash) == 0))
+            {
+                printf("cracked  %s  %s\n", data->passwords[p], target_hash);
+                // break if password cracked
+                break;
+            }
+        }
+        printf("*** failed to crack  %s\n", target_hash);
+
+    }
+    return NULL;
+}
+
