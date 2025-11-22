@@ -37,6 +37,8 @@ typedef struct hash_algs
     int yescrypt_count;
     int gostyes_count;
     int bcrypt_count;
+    int failed;
+    int total;
 }hash_algs_t;
 
 typedef struct thread_data
@@ -47,6 +49,8 @@ typedef struct thread_data
     int hash_count;
     int password_count;
     FILE *output_fp;
+    long tid;
+    int total_failed;
 }thread_data_t;
 
 // Prototypes
@@ -61,7 +65,7 @@ int main(int argc, char *argv[])
 {
     //bool verbose = false;                     // Indicates verbose option selection
     int num_threads = 1;                        // Default number of threads
-    char *output_file;                          // File used for output results
+    char *output_file = NULL;                   // File used for output results
     char *input_file = NULL;                    // File used for input
     char *dict_file = NULL;                     // File used for dictionary
     int password_count = 0;                     // Number of passwords read
@@ -71,8 +75,9 @@ int main(int argc, char *argv[])
     pthread_t *threads = NULL;                  // Pointer array for threads
     long tid = 0;                               // Thread identifier
     hash_algs_t hash_types;                     // Struct for hash types
-    thread_data_t thread_data;                  // Struct for thread data
+    thread_data_t *thread_data_array;           // Array of thread data structs
     FILE *output_fp = stdout;                   // Output file pointer defaults to stdout
+    int total_failed = 0;                       // Counts total failed cracks
 
     // Initialize passwords to NULL
     // DON'T FORGET TO FREE THIS MEMORY!!!
@@ -86,7 +91,6 @@ int main(int argc, char *argv[])
     }
 
     // Initialize hash_entries to null
-    // DON'T FORGET TO FREE THIS MEMORY!!!
     hashes = calloc(MAX_STRINGS, sizeof(char *));
 
     // check for calloc failure
@@ -184,28 +188,48 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Initialize thread_data struct
-    thread_data.hashes = hashes;
-    thread_data.passwords = passwords;
-    thread_data.hash_count = hash_count;
-    thread_data.password_count = password_count;
-    thread_data.hash_types = &hash_types;
-    thread_data.output_fp = output_fp;
-
     // Initialize threads array
     // Since we don't know how many threads we need, we need to allocate
     // the memory dynamically
     threads = malloc(num_threads * sizeof(pthread_t));
 
+    // Initialize thread data struct array
+    thread_data_array = malloc(num_threads * sizeof(thread_data_t));
+
+    // Create threads
     for (tid = 0; tid < num_threads; tid++)
     {
-        pthread_create(&threads[tid], NULL, password_crack_helper, &thread_data);
+        // Initialize thread_data struct
+        thread_data_array[tid].hashes = hashes;
+        thread_data_array[tid].passwords = passwords;
+        thread_data_array[tid].hash_count = hash_count;
+        thread_data_array[tid].password_count = password_count;
+        thread_data_array[tid].hash_types = &hash_types;
+        thread_data_array[tid].output_fp = output_fp;
+        thread_data_array[tid].tid = tid;
+        thread_data_array[tid].total_failed = total_failed;
+        pthread_create(&threads[tid], NULL, password_crack_helper, &thread_data_array[tid]);
     }
     for (tid = 0; tid < num_threads; tid++)
     {
         pthread_join(threads[tid], NULL);
     }
 
+    fprintf(stderr, "total:  %d", num_threads);
+    fprintf(stderr, "\t0.00 sec");
+    fprintf(stderr, "\tDES:\t%d", hash_types.DES_count);
+    fprintf(stderr, "\tNT:\t%d", hash_types.NT_count);
+    fprintf(stderr, "\tMD5:\t%d", hash_types.MD5_count);
+    fprintf(stderr, "\tSHA256:\t%d", hash_types.SHA_256_count);
+    fprintf(stderr, "\tSHA512:\t%d", hash_types.SHA_512_count);
+    fprintf(stderr, "\tYESCRYPT:\t%d", hash_types.yescrypt_count);
+    fprintf(stderr, "\tGOST_YESCRYPT:\t%d", hash_types.gostyes_count);
+    fprintf(stderr, "\tBCRYPT:\t%d\n", hash_types.bcrypt_count);
+    fprintf(stderr, "total:\t%d", hash_count);
+    fprintf(stderr, "\tfailed:\t%d", hash_types.failed);
+    fprintf(stderr, "\n");
+
+    // Free memory
     for (int i = 0; i < password_count; i++)
     {
         free(passwords[i]);
@@ -216,8 +240,15 @@ int main(int argc, char *argv[])
         free(hashes[i]);
     }
 
+    free(passwords);
     free(hashes);
     free(threads);
+    free(thread_data_array);
+
+    if (output_fp != stdout)
+    {
+        fclose(output_fp);
+    }
 
     return EXIT_SUCCESS;
 }
@@ -311,13 +342,17 @@ void *password_crack_helper(void *arg)
     char *target_hash = NULL;                                               // Variable for hash string
     char *result = NULL;                                                    // Variable for result from crypt_rn()
     char buffer[BUFFER];                                                    // Buffer for strtok
-    thread_data_t *data = (thread_data_t *)arg;
+    thread_data_t *data = (thread_data_t *)arg;                             // All thread data
     static pthread_mutex_t counter_lock = PTHREAD_MUTEX_INITIALIZER;        // Mutex lock
     bool cracked = false;                                                   // Variable to indicate if cracked or not
+    hash_algs_t local_counts;                                              // Variable for local thread counts
 
     // Initialize the crypt_data structure
     // Sets everything to 0
     memset(&crypt_info, 0, sizeof(crypt_info));
+
+    // Initialize local counts
+    memset(&local_counts, 0, sizeof(local_counts));
 
     // For loop to loop through each array of passwords and hashes
     // We want to extract the alg name for each line that is being read
@@ -332,52 +367,47 @@ void *password_crack_helper(void *arg)
             strncpy(buffer, data->hashes[hash_index], sizeof(buffer) - 1); // Copies hash string into buffer for parsing
             buffer[sizeof(buffer) - 1] = '\0'; // Ensure null-termination
 
-            strtok(buffer, "$");                            // Skips the first $, first pass is the string
-            alg_name = strtok(NULL, "$");                   // Parses the algorithm
+            alg_name = strtok(buffer, "$");                            // Skips the first $, and returns the pointer to the next delimeter
         }
         else
         {
             alg_name = "DES";
         }
 
-        // this section increments the total number of each hash algorithm based on parsed info
-        // Protect with mutex lock!
-        pthread_mutex_lock(&counter_lock);
+        // this section increments the number of algorithms for each thread
         if (strcmp(alg_name, "3") == 0)
 
         {
-            data->hash_types->NT_count++;
+            local_counts.NT_count++;
         }
         else if (strcmp(alg_name, "1") == 0)
         {
-            data->hash_types->MD5_count++;
+            local_counts.MD5_count++;
         }
         else if (strcmp(alg_name, "5") == 0)
         {
-            data->hash_types->SHA_256_count++;
+            local_counts.SHA_256_count++;
         }
         else if (strcmp(alg_name, "6") == 0)
         {
-            data->hash_types->SHA_512_count++;
+            local_counts.SHA_512_count++;
         }
         else if (strcmp(alg_name, "y") == 0)
         {
-            data->hash_types->yescrypt_count++;
+            local_counts.yescrypt_count++;
         }
         else if (strcmp(alg_name, "gy") == 0)
         {
-            data->hash_types->gostyes_count++;
+            local_counts.gostyes_count++;
         }
         else if (strcmp(alg_name, "2b") == 0)
         {
-            data->hash_types->bcrypt_count++;
+            local_counts.bcrypt_count++;
         }
         else if (strcmp(alg_name, "DES") == 0)
         {
-            data->hash_types->DES_count++;
+            local_counts.DES_count++;
         }
-        // Unlock the mutex lock!
-        pthread_mutex_unlock(&counter_lock);
 
         // check each password against the hash
         for (int p = 0; p < data->password_count; p++)
@@ -387,14 +417,47 @@ void *password_crack_helper(void *arg)
             {
                 fprintf(data->output_fp, "cracked  %s  %s\n", data->passwords[p], target_hash);
                 cracked = true;
+                local_counts.total++;
                 // break if password cracked
                 break;
             }
         }
         if (!cracked)
+        {
             fprintf(data->output_fp, "*** failed to crack  %s\n", target_hash);
+            local_counts.failed++;
+            local_counts.total++;
+        }
 
     }
-    return NULL;
+
+    // Update the global counts
+    // Protect with a mutex lock!
+    pthread_mutex_lock(&counter_lock);
+    data->hash_types->NT_count += local_counts.NT_count;
+    data->hash_types->MD5_count += local_counts.MD5_count;
+    data->hash_types->SHA_256_count += local_counts.SHA_256_count;
+    data->hash_types->SHA_512_count += local_counts.SHA_512_count;
+    data->hash_types->yescrypt_count += local_counts.yescrypt_count;
+    data->hash_types->gostyes_count += local_counts.gostyes_count;
+    data->hash_types->bcrypt_count += local_counts.bcrypt_count;
+    data->hash_types->DES_count += local_counts.DES_count;
+    data->hash_types->failed += local_counts.failed;
+    pthread_mutex_unlock(&counter_lock);
+
+    fprintf(stderr, "thread:  %ld", data->tid);
+    fprintf(stderr, "\t0.00 sec");
+    fprintf(stderr, "\tDES:\t%d", local_counts.DES_count);
+    fprintf(stderr, "\tNT:\t%d", local_counts.NT_count);
+    fprintf(stderr, "\tMD5:\t%d", local_counts.MD5_count);
+    fprintf(stderr, "\tSHA256:\t%d", local_counts.SHA_256_count);
+    fprintf(stderr, "\tSHA512:\t%d", local_counts.SHA_512_count);
+    fprintf(stderr, "\tYESCRYPT:\t%d", local_counts.yescrypt_count);
+    fprintf(stderr, "\tGOST_YESCRYPT:\t%d", local_counts.gostyes_count);
+    fprintf(stderr, "\tBCRYPT:\t%d\n", local_counts.bcrypt_count);
+    fprintf(stderr, "total:\t%d", local_counts.total);
+    fprintf(stderr, "\tfailed:\t%d", local_counts.failed);
+    fprintf(stderr, "\n");
+    pthread_exit(EXIT_SUCCESS);
 }
 
