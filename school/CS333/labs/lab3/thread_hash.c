@@ -46,6 +46,7 @@ typedef struct thread_data
     hash_algs_t *hash_types;
     int hash_count;
     int password_count;
+    FILE *output_fp;
 }thread_data_t;
 
 // Prototypes
@@ -60,7 +61,7 @@ int main(int argc, char *argv[])
 {
     //bool verbose = false;                     // Indicates verbose option selection
     int num_threads = 1;                        // Default number of threads
-    // char output_file;                        // File used for output results
+    char *output_file;                          // File used for output results
     char *input_file = NULL;                    // File used for input
     char *dict_file = NULL;                     // File used for dictionary
     int password_count = 0;                     // Number of passwords read
@@ -71,6 +72,7 @@ int main(int argc, char *argv[])
     long tid = 0;                               // Thread identifier
     hash_algs_t hash_types;                     // Struct for hash types
     thread_data_t thread_data;                  // Struct for thread data
+    FILE *output_fp = stdout;                   // Output file pointer defaults to stdout
 
     // Initialize passwords to NULL
     // DON'T FORGET TO FREE THIS MEMORY!!!
@@ -119,7 +121,13 @@ int main(int argc, char *argv[])
                 // Not required
                 case 'o':
                 {
-                    //output_file = optarg;
+                    output_file = optarg;
+                    output_fp = fopen(output_file, "w");
+                    if (!output_fp)
+                    {
+                        perror(output_file);
+                        exit(FILE_READ_ERR);
+                    }
                     break;
                 }
                 // Dictionary file name
@@ -182,6 +190,7 @@ int main(int argc, char *argv[])
     thread_data.hash_count = hash_count;
     thread_data.password_count = password_count;
     thread_data.hash_types = &hash_types;
+    thread_data.output_fp = output_fp;
 
     // Initialize threads array
     // Since we don't know how many threads we need, we need to allocate
@@ -304,6 +313,7 @@ void *password_crack_helper(void *arg)
     char buffer[BUFFER];                                                    // Buffer for strtok
     thread_data_t *data = (thread_data_t *)arg;
     static pthread_mutex_t counter_lock = PTHREAD_MUTEX_INITIALIZER;        // Mutex lock
+    bool cracked = false;                                                   // Variable to indicate if cracked or not
 
     // Initialize the crypt_data structure
     // Sets everything to 0
@@ -313,6 +323,7 @@ void *password_crack_helper(void *arg)
     // We want to extract the alg name for each line that is being read
     for (hash_index = get_next_row(data->hash_count); hash_index != -1 ; hash_index = get_next_row(data->hash_count))
     {
+        cracked = false;
         target_hash = data->hashes[hash_index];
         
         // this section parses the algorithm name from the hash
@@ -374,12 +385,14 @@ void *password_crack_helper(void *arg)
             result = crypt_rn(data->passwords[p], target_hash, &crypt_info, sizeof(crypt_info));
             if (result && (strcmp(result, target_hash) == 0))
             {
-                printf("cracked  %s  %s\n", data->passwords[p], target_hash);
+                fprintf(data->output_fp, "cracked  %s  %s\n", data->passwords[p], target_hash);
+                cracked = true;
                 // break if password cracked
                 break;
             }
         }
-        printf("*** failed to crack  %s\n", target_hash);
+        if (!cracked)
+            fprintf(data->output_fp, "*** failed to crack  %s\n", target_hash);
 
     }
     return NULL;
