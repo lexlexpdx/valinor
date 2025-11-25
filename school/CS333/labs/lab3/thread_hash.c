@@ -19,7 +19,7 @@
 #define FILE_READ_ERR 4                         // Exit value for file read error
 #define OPTIONS "i:o:d:hvt:n"                   // Options for getopt
 #define BUFFER 1000                             // Buffer size 1000
-#define MAX_STRINGS 1000                        // Max number of strings
+#define MAX_STRINGS 100000                      // Max number of strings
 #define MAX_STRING_LEN 256                      // Max password length
 #define MICROSECONDS_PER_SECOND 1000000.0       // Microseconds per second
 
@@ -68,7 +68,7 @@ double elapsed_time(struct timeval *t1, struct timeval *t2);
 
 int main(int argc, char *argv[])
 {
-    //bool verbose = false;                     // Indicates verbose option selection
+    bool verbose = false;                       // Indicates verbose option selection
     int num_threads = 1;                        // Default number of threads
     char *output_file = NULL;                   // File used for output results
     char *input_file = NULL;                    // File used for input
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
                 // Verbose option
                 case 'v':
                 {
-                    //verbose = true;
+                    verbose = true;
                     break;
                 }
                 // Number of Threads
@@ -196,6 +196,9 @@ int main(int argc, char *argv[])
 
         }
     }
+
+    if (verbose)
+        fprintf(stderr, "Verbose mode is enabled.");
 
     // Sets et0 to current time
     gettimeofday(&et0, NULL);
