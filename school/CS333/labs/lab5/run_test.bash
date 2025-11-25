@@ -53,7 +53,7 @@ then
 fi
 
 # shows help if no value given
-if [ $VAL2 -eq -1 ]
+if [ $VAL1 -eq -1 ]
 then
     VAL1=1                         # Set to default 1
 fi
