@@ -43,10 +43,6 @@ pip install scipy
 echo "Installing matplotlib..."
 pip install matplotlib
 
-# Install WFDB library
-echo "Installing WFBD library"
-pip install wfdb
-
 #------------------------------------------
 # Info printout
 #------------------------------------------

@@ -9,6 +9,7 @@ venv.bak/
 myvenv/
 *venv/
 myenv/
+mit_bih_data/
 
 # python bytecode
 __pycache__/
