@@ -47,6 +47,10 @@ pip install matplotlib
 echo "Installing WFBD library"
 pip install wfdb
 
+# Install Neurokit library
+echo "Installing NeuroKit library"
+pip install neurokit2
+
 #------------------------------------------
 # Info printout
 #------------------------------------------
