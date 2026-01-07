@@ -22,7 +22,7 @@ echo "Activating virtual environment..."
 source ./myenv/bin/activate
 
 # confirm virtual environment
-if [ -n $VIRTUAL_ENV ]
+if [ -n "$VIRTUAL_ENV" ]
 then
     echo "✓ Virtual environment active at: $VIRTUAL_ENV"
     echo "✓ Using python: $(which python)"
