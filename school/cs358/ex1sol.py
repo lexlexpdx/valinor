@@ -213,3 +213,41 @@ print(f"Result: {test}")
 3b. [+ 1 [ ** 2 [* 3 [- 4 5]]]] = 9/8
 
 """
+
+# Regular Python AST and X language classes
+
+# Number node
+class Num:
+    def __init__(self, value):
+        self.value = value
+        
+# Subtraction node
+class Subtract:
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+        
+# Addition node
+class Add:
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+        
+# Multiplication node
+class Multiply:
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+# Exponent node
+class Exponent:
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+
+# Regular python tree construction
+python_ast = Subtract(Add(Num(1), Multiply((Exponent(Num(2), Num(3))), Num(4))), Num(5))
+
+# X language tree construction
+x_ast = Add(Num(1), Exponent(Num(2), Multiply(Num(3), Subtract(Num(4), Num(5)))))
