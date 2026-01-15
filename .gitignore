@@ -42,3 +42,10 @@ wheels/
 # Data directories
 data/
 FashionMNIST/
+
+# Neural network directories and archives
+neural-networks-and-deep-learning-master/
+*.zip
+
+# PyTorch data
+pytorch_basics/data/
