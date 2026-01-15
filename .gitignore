@@ -36,16 +36,16 @@ wheels/
 
 # Jupyter files
 .jupytext*
-.ipynb_checkpoints/
-.ipynb
+.ipynb_checkpoints
+*.ipynb
 
 # Data directories
 data/
 FashionMNIST/
 
-# Neural network directories and archives
+# Neural networks 
 neural-networks-and-deep-learning-master/
 *.zip
 
-# PyTorch data
-pytorch_basics/data/
+# Pytorch basics
+pytorch_basics/
