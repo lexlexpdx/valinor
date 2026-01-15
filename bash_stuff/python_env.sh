@@ -55,6 +55,10 @@ pip install wfdb
 echo "Installing NeuroKit library"
 pip install neurokit2
 
+# Install Jupytext
+echo "Installing Jupytext"
+pip install jupytext
+
 #------------------------------------------
 # Info printout
 #------------------------------------------

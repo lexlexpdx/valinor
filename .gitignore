@@ -33,3 +33,12 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Jupyter files
+.jupytext*
+.ipynb_checkpoints/
+.ipynb
+
+# Data directories
+data/
+FashionMNIST/
