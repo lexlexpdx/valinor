@@ -55,6 +55,10 @@ pip install pandas
 #echo "Installing NeuroKit library"
 #pip install neurokit2
 
+# Install sklearn
+echo "Installing Sklearn"
+pip install scikit-learn
+
 #------------------------------------------
 # Info printout
 #------------------------------------------
