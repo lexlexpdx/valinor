@@ -160,19 +160,6 @@
 # $A^T A \text{is invertible} \iff Rank(A^T A)=Rank(A) \iff Rank(A)=n \iff \text{columns of A are linearly independent}$
 #   
 
-# %%
-import numpy as np
-import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
-
-from sklearn.datasets import fetch_california_housing
-california = fetch_california_housing()
-X = california.data
-y = california.target
-
-print(california.feature_names)
-
 # %% [markdown]
 # ## Question 5  
 #   
@@ -188,6 +175,78 @@ print(california.feature_names)
 # - AveOccup
 # - Latitude
 # - Longitude  
-#   
-# 
 
+# %%
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+from sklearn.datasets import fetch_california_housing
+california = fetch_california_housing()
+X = california.data
+y = california.target
+
+print("Question 5b:\n")
+df = pd.DataFrame(X, columns = california.feature_names)
+print(df.loc[10:15, ['HouseAge', 'AveRooms', 'Population']])
+
+# Isolate only average occupancy
+X_aveocc = X[:, california.feature_names.index('AveOccup')]
+
+# Split test data
+split_index = int(len(X_aveocc) * (2 / 3))
+X_train = X_aveocc[:split_index]
+X_test = X_aveocc[split_index:]
+y_train = y[:split_index]
+y_test = y[split_index:]
+
+ym = np.mean(y_train)
+xm = np.mean(X_train)
+syy = np.mean((y_train - ym) ** 2)
+syx = np.mean((y_train - ym) * (X_train - xm))
+sxx = np.mean((X_train - xm) ** 2)
+beta1 = syx / sxx
+beta0 = ym - beta1 * xm 
+
+print(f"\nQuestion 5c:")
+print(f"Beta1 (slope): {beta1:.4f}")
+print(f"Beta0 (intercep): {beta0:.4f}")
+
+y_hat_tst = beta0 + beta1 * X_test
+y_hat_tr = beta0 + beta1 * X_train
+
+train_MSE = np.mean((y_train - y_hat_tr) ** 2)
+test_MSE = np.mean((y_test - y_hat_tst) ** 2)
+
+print(f"Training MSE: {train_MSE:.4f}")
+print(f"Test MSE = {test_MSE:.4f} \n")
+
+print(f"Question 5d: \n")
+
+R2_train = 1 - np.sum((y_train - y_hat_tr) ** 2) / np.sum((y_train - np.mean(y_train)) ** 2)
+R2_test = 1 - np.sum((y_test - y_hat_tst) ** 2) / np.sum((y_test - np.mean(y_test)) ** 2)
+
+print(f"Training R^2: {R2_train}")
+print(f"Test R^2: {R2_test}")
+
+# %% [markdown]
+# Because the training and test $R^2$ values are close to zero or negative, Average Occupancy is a 
+# poor predictor of the median house value  
+#   
+# ## Question 6  
+#   
+# 6a)  
+#   
+#
+# if $Ax=b$ has no solution, then $b \notin col(A)$ and $Rank(A) \lt m$  
+#   
+# 6b)  
+#   
+# if $Ax=b$ has exactly 1 solution then $Rank(A)=n$ and $b \in col(A)$  
+#   
+# 6c)  
+#   
+# if $Ax=b$ has infinitely many solutions then $b \in col(A)$ and $Rank(A) \lt n$
