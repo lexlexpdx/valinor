@@ -1,9 +1,8 @@
 # Lex Albrandt
 # CS440
 # Homework 2
-# RNN
+# RNN - Weather Data
 
-import yfinance as yf
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,7 +17,6 @@ from sklearn.preprocessing import MinMaxScaler
 # --------------------------------
 # Sources
 # --------------------------------
-# https://medium.com/thedeephub/rnns-in-action-predicting-stock-prices-with-recurrent-neural-networks-9155a33c4c3b
 
 # --------------------------------
 # Model size definitions
@@ -33,59 +31,96 @@ num_layers = 1
 # --------------------------------
 epochs = 50
 learning_rate = 0.001
-batch_size = 10
+batch_size = 1
 
 # --------------------------------
-# Load data from yfinance
+# Load data from csv
 # --------------------------------
 
-# # Download DJI average
-# dow_jones_index = yf.download('^DJI', start = "2000-01-01", end = "2024-01-01")
+df = pd.read_csv("seattle-weather.csv")
 
-# # Save to CSV
-# dow_jones_index.to_csv("dow_jones.csv")
+# # --------------------------------
+# # DFT testing
+# # --------------------------------
+
+# # Extract one year and three years of data
+# one_year_data = df["temp_max"].values[10:375]
+# three_year_data = df["temp_max"].values[:1095]
 
 
-df = pd.read_csv("dow_jones.csv", header = [0, 1], index_col = 0)
+# # Perform DFT
+# # fft_vals = np.fft.fft(one_year_data)
+# # fft_freqs = np.fft.fftfreq(len(one_year_data), d = 1)
 
-# print(df["High"].head(10))
-# print(df["High"].dtypes)
+# fft_vals = np.fft.fft(one_year_data)
+# fft_freqs = np.fft.fftfreq(len(one_year_data), d = 1)
 
-df_high_prices = df["High"]["^DJI"].values
+# # Compute magnitude spectrum
+# magnitude = np.abs(fft_vals)
 
-# Normalize data
-scaler = MinMaxScaler()
-high_prices = scaler.fit_transform(df_high_prices.reshape(-1, 1))
+# skip = 2
+
+# # Plot data
+# plt.figure(figsize = (10, 4))
+# plt.stem(fft_freqs[skip:len(fft_freqs) // 2], magnitude[skip:len(magnitude) // 2])
+# plt.xlabel("Frequency (cycles per day)")
+# plt.ylabel('Magnitude')
+# plt.title("DFT of Seattle Max Temp (1 year)")
+# plt.show()
+
+# fft_list = list(zip(fft_freqs, magnitude))
+# fft_list_sorted = sorted(fft_list, key = lambda x: x[1], reverse = True)
+# for f, mag in fft_list_sorted[:10]:
+#     period_days = 1 / f if f != 0 else np.inf
+#     print(f"Frequency: {f:.4f} cycles/day, Magnitude: {mag:.2f}, period: {period_days:.1f} days")
+
+# ------------------------------
+# RNN
+# ------------------------------
+
+# Reshape too
+df_temp_max = df["temp_max"].values.reshape(-1, 1)
+
+days_per_year = 365
 
 # Split data into training and test data
-train_size = int(len(high_prices) * 0.8)
-train_data, test_data = high_prices[:train_size], high_prices[train_size:]
+train_raw = df_temp_max[:2 * days_per_year]
+test_raw = df_temp_max[2 * days_per_year : 3 * days_per_year]
+
+# Normalize Data
+
+# Create a scalar object
+scaler = MinMaxScaler()
+
+# calculates min-max and maps values to [0, 1]
+train_data = scaler.fit_transform(train_raw)
+
+# Does not calculate min-max from test, same scale
+test_data = scaler.transform(test_raw)
 
 # Create sequences
-# Default: 100 days
-def create_dataset(dataset, look_back = 100):
+# Default = 160 days
+def create_dataset(dataset, look_back = 160):
     X, Y = [], []
 
-    # Loop over dataset so each sequence has look_back elements
-    for i in range(len(dataset) - look_back -1):
+    for i in range(len(dataset) - look_back - 1):
         X.append(dataset[i : i + look_back])
+
+        # value immediately after input sequence
         Y.append(dataset[i + look_back])
 
     return np.array(X), np.array(Y)
 
-# Number of days in a sequence
-look_back = 100
+look_back = 10
 X_train, Y_train = create_dataset(train_data, look_back)
 X_test, Y_test = create_dataset(test_data, look_back)
 
-# Convert numpy datasets to tensors
 X_train_tensor = torch.from_numpy(X_train).float()
 Y_train_tensor = torch.from_numpy(Y_train).float()
 
 X_test_tensor = torch.from_numpy(X_test).float()
 Y_test_tensor = torch.from_numpy(Y_test).float()
 
-# Wrap tensors in dataloader for batching
 train_dataset = TensorDataset(X_train_tensor, Y_train_tensor)
 test_dataset = TensorDataset(X_test_tensor, Y_test_tensor)
 
@@ -194,36 +229,64 @@ for epoch in range(epochs):
     # Testing the model
     # ------------------
 
+    predictions = []
+
+    # gets last look_back days from training data
+    window = train_data[-look_back:]
+    
+    # convert numpy array to tensor and casts it to float32, adds batch dimension at axis 0
+    # Shape expected by LSTM: (batch_size, sequence_length, input_size)
+    window_tensor = torch.from_numpy(window).float().unsqueeze(0).to(device)
+
     model.eval()
-    test_loss = 0.0
         
     with torch.no_grad():
-        
-        for X_batch, Y_batch in test_loader:
-            X_batch, Y_batch = X_batch.to(device), Y_batch.to(device)
-            outputs = model(X_batch)
-            loss = loss_function(outputs, Y_batch)
-            test_loss += loss.item()
+        for i in range(days_per_year):
             
-    avg_test_loss = test_loss / len(test_loader)
-    testing_loss.append(avg_test_loss)
+            # send to model
+            next_pred = model(window_tensor)
 
-    print(f"Epoch {epoch + 1}, Test Loss: {avg_test_loss:.4f}")
+            # add result to predictions list
+            predictions.append(next_pred.item())
+
+            # uses the true temp from test data as the next input and reshapes to single
+            # timestep
+            true_next = test_data[i].reshape(1, 1)
+
+            # drops oldes value, and appends the true next
+            # Stacks vertically to remain shape
+            window = np.vstack((window[:1], true_next))
+
+            # Reshapes as before
+            window_tensor = torch.from_numpy(window).float().unsqueeze(0).to(device)
 
 
-# ---------------------------
-# Plot training vs test loss
-# ---------------------------
 
-epochs_range = range(1, epochs + 1)
+# Inverse scaling
+# converts to np array and reshapes to (n_samples, 1)
+predictions = np.array(predictions).reshape(-1, 1)
 
-plt.figure()
-plt.plot(epochs_range, training_loss, label = "Training Loss")
-plt.plot(epochs_range, testing_loss, label = "Testing Loss")
-plt.xlabel("Epoch")
-plt.ylabel("Loss")
-plt.title(f"Loss vs Epoch: LR = {learning_rate}, Loss = MSE")
+# convert scaling back into degrees celcius (because we re-scaled our data earlier)
+predictions = scaler.inverse_transform(predictions)
+
+actual = test_raw[:days_per_year]
+
+print("Day | Actual (°C) | Predicted (°C)")
+print("-" * 35)
+
+for i in range(10):
+    print(f"{i+1:3d} | {actual[i][0]:10.2f} | {predictions[i][0]:14.2f}")
+
+# ----------------------------
+# Plot predicted vs actual
+# ----------------------------
+
+plt.figure(figsize = (12, 5))
+plt.plot(actual, label = "Actual Max Temp")
+plt.plot(predictions, label = "Predicted Max Temp")
+plt.xlabel("Day of Year 3")
+plt.ylabel("Temperature (Degrees Celcius)")
+plt.title("Year 3 Temperature Prediction")
 plt.legend()
 plt.grid(True)
 plt.show()
-

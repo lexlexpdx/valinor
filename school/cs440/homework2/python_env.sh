@@ -55,10 +55,6 @@ pip install matplotlib
 echo "Installing yfinance..."
 pip install yfinance
 
-# Install Kagglehub
-echo "Installing Kagglehub"
-pip install kagglehub
-
 #------------------------------------------
 # Info printout
 #------------------------------------------
