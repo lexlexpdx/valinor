@@ -39,40 +39,40 @@ batch_size = 1
 
 df = pd.read_csv("seattle-weather.csv")
 
-# # --------------------------------
-# # DFT testing
-# # --------------------------------
+# --------------------------------
+# DFT testing
+# --------------------------------
 
-# # Extract one year and three years of data
-# one_year_data = df["temp_max"].values[10:375]
-# three_year_data = df["temp_max"].values[:1095]
+# Extract one year and three years of data
+one_year_data = df["temp_max"].values[10:375]
+three_year_data = df["temp_max"].values[:1095]
 
 
-# # Perform DFT
-# # fft_vals = np.fft.fft(one_year_data)
-# # fft_freqs = np.fft.fftfreq(len(one_year_data), d = 1)
-
+# Perform DFT
 # fft_vals = np.fft.fft(one_year_data)
 # fft_freqs = np.fft.fftfreq(len(one_year_data), d = 1)
 
-# # Compute magnitude spectrum
-# magnitude = np.abs(fft_vals)
+fft_vals = np.fft.fft(three_year_data)
+fft_freqs = np.fft.fftfreq(len(three_year_data), d = 1)
 
-# skip = 2
+# Compute magnitude spectrum
+magnitude = np.abs(fft_vals)
 
-# # Plot data
-# plt.figure(figsize = (10, 4))
-# plt.stem(fft_freqs[skip:len(fft_freqs) // 2], magnitude[skip:len(magnitude) // 2])
-# plt.xlabel("Frequency (cycles per day)")
-# plt.ylabel('Magnitude')
-# plt.title("DFT of Seattle Max Temp (1 year)")
-# plt.show()
+skip = 1
 
-# fft_list = list(zip(fft_freqs, magnitude))
-# fft_list_sorted = sorted(fft_list, key = lambda x: x[1], reverse = True)
-# for f, mag in fft_list_sorted[:10]:
-#     period_days = 1 / f if f != 0 else np.inf
-#     print(f"Frequency: {f:.4f} cycles/day, Magnitude: {mag:.2f}, period: {period_days:.1f} days")
+# Plot data
+plt.figure(figsize = (10, 4))
+plt.stem(fft_freqs[skip:len(fft_freqs) // 2], magnitude[skip:len(magnitude) // 2])
+plt.xlabel("Frequency (cycles per day)")
+plt.ylabel('Magnitude')
+plt.title("DFT of Seattle Max Temp (1 year)")
+plt.show()
+
+fft_list = list(zip(fft_freqs, magnitude))
+fft_list_sorted = sorted(fft_list, key = lambda x: x[1], reverse = True)
+for f, mag in fft_list_sorted[:10]:
+    period_days = 1 / f if f != 0 else np.inf
+    print(f"Frequency: {f:.4f} cycles/day, Magnitude: {mag:.2f}, period: {period_days:.1f} days")
 
 # ------------------------------
 # RNN
@@ -255,7 +255,7 @@ for epoch in range(epochs):
 
             # drops oldes value, and appends the true next
             # Stacks vertically to remain shape
-            window = np.vstack((window[:1], true_next))
+            window = np.vstack((window[1:], true_next))
 
             # Reshapes as before
             window_tensor = torch.from_numpy(window).float().unsqueeze(0).to(device)
