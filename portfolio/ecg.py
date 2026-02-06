@@ -162,6 +162,25 @@ def differentiate(ecg_signal: np.ndarray) -> np.ndarray:
 
     return diff_ecg
 
+def MovingAverage(ECG, N = 30):
+    """ This function computes the moving average of signal ECG with a rectangular
+        window of N
+
+    Args:
+        ECG (np.ndarray): Differentiated and squared ECG signal
+        N (int): average window size, defaults to 30
+    """
+
+    window = np.ones((1, N)) / N
+    move_avg_ecg = np.convolve(np.squeeze(ECG), np.squeeze(window))
+    
+    return move_avg_ecg
+
+def QRSpeaks(ECG, Fs):
+    
+    peaks, _ = signal.find_peaks(ECG, height = np.mean(ECG), distance = round(Fs * 0.200))
+    return peaks
+
 
 
 # List of sample files
@@ -179,6 +198,13 @@ for i in range(0, len(normal_sinus_examples)):
     # Apply differentiation
     differentiated_result = differentiate(bandpass_filtered)
 
+    # Apply moving average
+    move_avg_result = MovingAverage(differentiated_result)
+
+    # Peaks result
+    peaks_result =  QRSpeaks(move_avg_result, sample_rate)
+        
+
     # This allows us to set the duration to however long we would like (in seconds)
     duration = 6     
     end_index = int(duration * sample_rate)
@@ -188,6 +214,19 @@ for i in range(0, len(normal_sinus_examples)):
     wave_data_subset = wave_data[:end_index]
     bandpass_subset = bandpass_filtered[:end_index]
     differentiated_subset = differentiated_result[:end_index]
+    move_avg_subset = move_avg_result[:end_index]
+
+    # Calculate scaling factors for visualization
+    scale_factor = np.max(np.abs(wave_data_subset)) / np.max(np.abs(differentiated_subset))
+    differentiated_plot = differentiated_subset * scale_factor
+
+    scale_factor_ma = np.max(np.abs(wave_data_subset)) / np.max(np.abs(move_avg_subset))
+    move_avg_plot = move_avg_subset * scale_factor_ma
+
+    # find peaks within plotting window
+    peaks_in_window = peaks_result[peaks_result < end_index]
+    peak_times = time_ECG[peaks_in_window]
+    peak_values = move_avg_plot[peaks_in_window]
 
     # creates a figure with len x width dimensions
     plt.figure(figsize = (FIG_SIZE_LEN, FIG_SIZE_WID))
@@ -202,7 +241,9 @@ for i in range(0, len(normal_sinus_examples)):
     # plt.plot(x, y, color)
     plt.plot(time_ECG_subset, wave_data_subset, 'k', label = "Raw ECG", alpha = 1)
     plt.plot(time_ECG_subset, bandpass_subset, 'b', label = "bandpass filtered", alpha = 0.7)
-    plt.plot(time_ECG_subset, differentiated_subset, 'g', label = "differentiated", alpha = 0.7)
+    plt.plot(time_ECG_subset, differentiated_plot, 'g', label = "differentiated", alpha = 0.7)
+    plt.plot(time_ECG_subset, move_avg_plot, 'y', label = "moving average", alpha = 0.9)
+    plt.plot(peak_times, peak_values, 'o', label = "peaks", alpha = 1)
 
     # Declares an axes object
     axis = plt.gca()

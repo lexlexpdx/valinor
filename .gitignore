@@ -37,7 +37,6 @@ wheels/
 # Jupyter files
 .jupytext*
 .ipynb_checkpoints
-*.ipynb
 
 # Data directories
 data/

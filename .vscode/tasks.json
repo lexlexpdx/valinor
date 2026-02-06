@@ -24,7 +24,7 @@
         {
             "label": "JupyText Sync",
             "type": "shell",
-            "command": "/home/lexlexpdx/Desktop/valinor/school/cs445/myenv/bin/jupytext --to ipynb ${file}",
+            "command": "/home/lexlexpdx/Desktop/valinor/school/cs445/myenv/bin/jupytext --sync ${file} && /home/lexlexpdx/Desktop/valinor/school/cs445/myenv/bin/jupyter notebook ${fileDirname}/${fileBasenameNoExtension}.ipynb",
             "group": {
                 "kind": "build",
                 "isDefault": true
