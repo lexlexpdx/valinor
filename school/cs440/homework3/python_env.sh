@@ -43,6 +43,10 @@ pip install pandas
 echo "Installing scikit-learn"
 pip install -U scikit-learn
 
+# Install Jupyter Notebook
+echo "Installing jupyter notebook"
+pip install jupyter
+
 # # Install scipy
 # echo "Installing scipy..."
 # pip install scipy
@@ -51,9 +55,9 @@ pip install -U scikit-learn
 echo "Installing matplotlib..."
 pip install matplotlib
 
-# Install yfinance
-echo "Installing yfinance..."
-pip install yfinance
+# # Install yfinance
+# echo "Installing yfinance..."
+# pip install yfinance
 
 #------------------------------------------
 # Info printout
