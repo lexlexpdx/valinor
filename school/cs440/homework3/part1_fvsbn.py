@@ -1,7 +1,10 @@
 # Lex Albrandt
 # CS440
 # Assignment 3
-# Part 1
+# Part 1 - FVSBN
+
+# sources
+# https://www.haraldvohringer.com/posts/fsbvn
 
 # Imports
 import torch
@@ -19,7 +22,7 @@ import numpy as np
 input_dim = 32 * 32 * 3
 hidden_dim = 512
 batch_size = 128
-epochs = 50
+epochs = 250
 learning_rate = 0.001
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -48,6 +51,10 @@ trainloader = torch.utils.data.DataLoader(
     shuffle = True,
     num_workers = 2
 )
+
+# Class Constants
+classes = ('plane', 'car', 'bird', 'cat', 'deer',
+           'dog', 'frog', 'horse', 'ship', 'truck')
 
 # ---------------------------------------
 # Define Masked Linear Layer
@@ -188,3 +195,4 @@ def show_images(imgs, nrow = 5):
     plt.show()
 
 show_images(samples, nrow = 5)
+

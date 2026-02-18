@@ -1,0 +1,9 @@
+Lex Albrandt
+CS358
+Assignment 2
+Report
+
+All of my programs work with the tests I conducted. I encountered some issues with skip.st and
+sum.st with the syntax of my program, and had to figure out how to do a while loop
+without any conditional operators, but once I figured those things out, everything worked
+fine.
