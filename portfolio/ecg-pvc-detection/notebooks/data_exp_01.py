@@ -1,3 +1,4 @@
+# %%
 '''
  # @ Author: Lex Albrandt
  # @ Create Time: 2026-02-17 12:05:47
@@ -12,16 +13,18 @@
 
 # %%
 # Imports
+import sys
 import wfdb
 import numpy as np
 import matplotlib.pyplot as plt
 import neurokit2 as nk
 
+
 # %% [markdown]
 # The first step is to load an individual record and associated annotations.  
 # Then isolate the only lead II
 
-# %% 
+# %%
 record_id = '100'
 record = wfdb.rdrecord(f'../data/{record_id}')
 annotation = wfdb.rdann(f'../data/{record_id}', 'atr')
@@ -61,7 +64,7 @@ plt.show()
 # We will do this for each individual patient. We want to binarize this  
 # detection so that it makes for easier classification
 
-# %% 
+# %%
 PVC_SYMBOLS = ['V', 'E']
 NORMAL_SYMBOLS = ['N', 'L', 'R']
 
@@ -71,11 +74,11 @@ for symbol in annotation.symbol:
     if symbol in PVC_SYMBOLS:
         beat_labels.append(1)
     elif symbol in NORMAL_SYMBOLS:
-        beat_labels.append(1)
+        beat_labels.append(0)
     else:
         beat_labels.append(-1)
 
-# %% 
+# %%
 # Plot beats
 plt.figure(figsize = (15, 4))
 plt.plot(time[:num_samples], ecg_cleaned[:num_samples], label = "Cleaned ECG")
@@ -101,7 +104,7 @@ plt.show()
 # isolating individual peaks. So let's do that. We already cleaned the ECG  
 # so now let's find signals and info using the neurokit library
 
-# %% 
+# %%
 # Find Peaks
 peaks = nk.ecg_findpeaks(ecg_cleaned, sampling_rate = fs)
 
@@ -114,5 +117,50 @@ print(f"Mean RR Interval: {rr_intervals.mean():.3f} sec")
 print(f"Min RR Interval: {rr_intervals.min():.3f} sec")
 print(f"Max RR Interval: {rr_intervals.max():.3f} sec")
 
+# %% [markdown]
+# Now it's time to extract beats
 
+# Window constansts (in samples)
+WINDOW_BEFORE = 100
+WINDOW_AFTER = 100
+
+beats = []
+labels = []
+
+# annotation.sample here is an array of indices with annotations
+for i, r_peak in enumerate(annotation.sample):
+
+    # sets the window
+    start = r_peak - WINDOW_BEFORE
+    end = r_peak + WINDOW_AFTER
+
+    # skip beats too close to edges
+    if start < 0 or end >= len(ecg_cleaned):
+        continue
+
+    segment = ecg_cleaned[start:end]
+
+    # ensure the correct length
+    if len(segment) == WINDOW_BEFORE + WINDOW_AFTER:
+        beats.append(segment)
+        # lables here: 1 = PVC, 0 = Normal
+        labels.append(beat_labels[i])
+
+# convert to np array
+beats = np.array(beats)
+labels = np.array(labels)
+
+print(f"Segment shape: {beats.shape}")
+print(f"Labels shape: {labels.shape}")
+
+pvc_beats = beats[labels == 1]
+print(f"Number of PVCs: {pvc_beats.shape[0]}")
+
+plt.figure(figsize=(12,6))
+for i in range(min(5, len(pvc_beats))):
+    plt.plot(pvc_beats[i])
+plt.title("Example PVC Beat Segments")
+plt.xlabel("Sample Index (centered at R-peak)")
+plt.ylabel("Amplitude")
+plt.show()
 # %%
