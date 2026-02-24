@@ -2,16 +2,18 @@
  # @ Author: Lex Albrandt
  # @ Create Time: 2026-02-17 09:49:19
  # @ Modified by: Lex Albrandt
- # @ Modified time: 2026-02-17 11:02:53
- # @ Description: This source code handles the data prep for the ECG/PVC detection
-                  project. 
+ # @ Modified time: 2026-02-23 19:21:38
+ # @ Description: This source code handles the data prep for the ECG/PVC detection project
  '''
 
+
 # Imports
+import test
 import wfdb
 import numpy as np
 import neurokit2 as nk
-from collections import Counter
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 # -------------------------------------
 # Download MIT-BIH Database with wfdb
@@ -38,8 +40,8 @@ all_annotations = []
 
 for record_id in record_ids:
     try:
-        record = wfdb.rdrecord(f'../data/{record_id}')
-        annotation = wfdb.rdann(f'../data/{record_id}', 'atr')
+        record = wfdb.rdrecord(f'../data/raw/{record_id}')
+        annotation = wfdb.rdann(f'../data/raw/{record_id}', 'atr')
         all_records.append(record)
         all_annotations.append(annotation)
         # n_samples is not used, but is required for return from X.shape
@@ -71,7 +73,7 @@ for ecg_record in all_records:
 WINDOW_BEFORE = 100
 WINDOW_AFTER = 100
 
-# Labels
+# Labels (Based on documentation from MIT-BIH)
 PVC_SYMBOLS = ['V', 'E']
 NORMAL_SYMBOLS = ['N', 'L', 'R']
 
@@ -119,13 +121,73 @@ for i, record_id in enumerate(record_ids):
             all_labels.append(beat_labels[j])
             all_patient_ids.append(record_id)
     
-# Conver to Numpy array
+# Convert to Numpy array
 X_beats = np.array(all_beats)
 y_labels = np.array(all_labels)
-patient = np.array(all_patient_ids)
+patients = np.array(all_patient_ids)
 
+# Distributions
 print(X_beats.shape, y_labels.shape)
-
 print(f"PVCs: {np.sum(y_labels == 1)}")
 print(f"Normal: {np.sum(y_labels == 0)}")
 print(f"Other: {np.sum(y_labels == -1)}")
+
+# Inspection of sample PVCs and Normal beats (delete later)
+pvc_beats = X_beats[y_labels == 1]
+norm_beats = X_beats[y_labels == 0]
+
+plt.figure(figsize = (12, 4))
+for i in range(5):
+    plt.plot(norm_beats[i], alpha = 0.5)
+plt.title("Example Normal Beats")
+plt.show()
+
+plt.figure(figsize = (12, 4))
+for i in range(5):
+    plt.plot(pvc_beats[i], alpha = 0.5)
+plt.title("Example PVC beats")
+plt.show()
+
+# --------------------------------
+# Train-Test Split
+# --------------------------------
+
+# Get unique patient ids
+unique_patients = np.unique(patients)
+
+# Random seed for reproducible shuffling
+np.random.seed(42)
+
+train_patients, test_patients = train_test_split(
+    unique_patients,
+    test_size = 0.3,
+    random_state = 42,
+    shuffle = True
+)
+
+print(f"Train patients: {train_patients}")
+print(f"Test patients: {test_patients}")
+
+train_mask = np.isin(patients, train_patients)
+test_mask = np.isin(patients, test_patients)
+
+X_train, y_train = X_beats[train_mask], y_labels[train_mask]
+X_test, y_test = X_beats[test_mask], y_labels[test_mask]
+
+print(f"Train shape: {X_train.shape, y_train.shape}")
+print(f"Test shape: {X_test.shape, y_test.shape}")
+
+# Shuffle within train/test
+idx = np.random.permutation(len(X_train))
+X_train, y_train = X_train[idx], y_train[idx]
+
+idx = np.random.permutation(len(X_test))
+X_test, y_test = X_test[idx], y_test[idx]
+
+# ------------------------------
+# Save Train/Test Arrays
+# ------------------------------
+np.save('../data/processed/X_train.npy', X_train)
+np.save('../data/processed/y_train.npy', y_train)
+np.save('../data/processed/X_test.npy', X_test)
+np.save('../data/processed/y_test.npy', y_test)

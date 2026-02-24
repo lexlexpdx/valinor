@@ -1,11 +1,12 @@
 # %%
 '''
  # @ Author: Lex Albrandt
- # @ Create Time: 2026-02-17 12:05:47
+ # @ Create Time: 2026-02-22 17:50:44
  # @ Modified by: Lex Albrandt
- # @ Modified time: 2026-02-17 12:05:49
+ # @ Modified time: 2026-02-23 18:43:52
  # @ Description: This is a python file for a data exploration notebook
  '''
+
 
 # %% [markdown]
 # ### Sources  
@@ -119,48 +120,48 @@ print(f"Max RR Interval: {rr_intervals.max():.3f} sec")
 
 # %% [markdown]
 # Now it's time to extract beats
-
+#
 # Window constansts (in samples)
-WINDOW_BEFORE = 100
-WINDOW_AFTER = 100
-
-beats = []
-labels = []
-
+# WINDOW_BEFORE = 100
+# WINDOW_AFTER = 100
+#
+# beats = []
+# labels = []
+#
 # annotation.sample here is an array of indices with annotations
-for i, r_peak in enumerate(annotation.sample):
-
-    # sets the window
-    start = r_peak - WINDOW_BEFORE
-    end = r_peak + WINDOW_AFTER
-
-    # skip beats too close to edges
-    if start < 0 or end >= len(ecg_cleaned):
-        continue
-
-    segment = ecg_cleaned[start:end]
-
-    # ensure the correct length
-    if len(segment) == WINDOW_BEFORE + WINDOW_AFTER:
-        beats.append(segment)
-        # lables here: 1 = PVC, 0 = Normal
-        labels.append(beat_labels[i])
-
+# for i, r_peak in enumerate(annotation.sample):
+#
+#     # sets the window
+#     start = r_peak - WINDOW_BEFORE
+#     end = r_peak + WINDOW_AFTER
+#
+#     # skip beats too close to edges
+#     if start < 0 or end >= len(ecg_cleaned):
+#         continue
+#
+#     segment = ecg_cleaned[start:end]
+#
+#     # ensure the correct length
+#     if len(segment) == WINDOW_BEFORE + WINDOW_AFTER:
+#         beats.append(segment)
+#         # lables here: 1 = PVC, 0 = Normal
+#         labels.append(beat_labels[i])
+#
 # convert to np array
-beats = np.array(beats)
-labels = np.array(labels)
-
-print(f"Segment shape: {beats.shape}")
-print(f"Labels shape: {labels.shape}")
-
-pvc_beats = beats[labels == 1]
-print(f"Number of PVCs: {pvc_beats.shape[0]}")
-
-plt.figure(figsize=(12,6))
-for i in range(min(5, len(pvc_beats))):
-    plt.plot(pvc_beats[i])
-plt.title("Example PVC Beat Segments")
-plt.xlabel("Sample Index (centered at R-peak)")
-plt.ylabel("Amplitude")
-plt.show()
+# beats = np.array(beats)
+# labels = np.array(labels)
+#
+# print(f"Segment shape: {beats.shape}")
+# print(f"Labels shape: {labels.shape}")
+#
+# pvc_beats = beats[labels == 1]
+# print(f"Number of PVCs: {pvc_beats.shape[0]}")
+#
+# plt.figure(figsize=(12,6))
+# for i in range(min(5, len(pvc_beats))):
+#     plt.plot(pvc_beats[i])
+# plt.title("Example PVC Beat Segments")
+# plt.xlabel("Sample Index (centered at R-peak)")
+# plt.ylabel("Amplitude")
+# plt.show()
 # %%

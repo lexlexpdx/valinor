@@ -1,0 +1,22 @@
+# Git Ignore for ECG-PVC detection project
+
+# Virtual environments
+venv/
+.env/
+.venv/
+myenv/
+.myenv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Jupyter files
+.ipynb_checkpoints
+
+# Raw data (large, untracked files)
+data/raw
+mit_bih_data/
+
+# Zip files
+*.zip

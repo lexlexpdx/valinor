@@ -54,6 +54,10 @@ pip install neurokit2
 echo "Installing Jupytext"
 pip install jupytext
 
+# Install sklearn
+echo "Installing Scikit-Learn"
+pip install scikit-learn
+
 #------------------------------------------
 # Info printout
 #------------------------------------------
