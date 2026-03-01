@@ -58,6 +58,10 @@ pip install jupytext
 echo "Installing Scikit-Learn"
 pip install scikit-learn
 
+# Install PyTorch
+echo "Installing PyTorch"
+pip install torch torchvision torchaudio
+
 #------------------------------------------
 # Info printout
 #------------------------------------------

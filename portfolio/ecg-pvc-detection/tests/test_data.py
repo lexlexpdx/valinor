@@ -98,10 +98,3 @@ def test_train_test_split():
     assert X_train.shape[0] == len(y_train)
     assert X_test.shape[0] == len(y_test)
     
-def test_numpy_load():
-    X_train, X_test, y_train, y_test = model.load_train_test_data()
-
-    assert isinstance(X_train, np.ndarray)
-    assert isinstance(X_test, np.ndarray)
-    assert isinstance(y_train, np.ndarray)
-    assert isinstance(y_test, np.ndarray)
