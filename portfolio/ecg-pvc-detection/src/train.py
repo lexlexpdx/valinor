@@ -14,6 +14,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve, auc
 import numpy as np
+import pandas as pd
 
 # ----------------------------------------------
 # Load data, normalize, and create dataloaders
@@ -133,25 +134,6 @@ def print_results(training_loss, testing_loss, test_acc, training_acc):
     plt.grid(True)
     plt.show()
 
-def calculate_confusion_matrix(net, test_loader, dec_thresh):
-    
-    net.eval()
-    all_preds = []
-    all_labels = []
-    
-    with torch.no_grad():
-        for inputs, labels in test_loader:
-            inputs = inputs.to(device)
-            outputs = net(inputs)
-            preds = (torch.sigmoid(outputs) >= dec_thresh).float()
-
-            all_preds.extend(preds.cpu().numpy().flatten())
-            all_labels.extend(labels.numpy().flatten())
-
-    cm = confusion_matrix(all_labels, all_preds)
-    
-    return cm
-    
 
 def plot_confusion_matrix(cm, plot_type):
    
@@ -186,26 +168,24 @@ def plot_confusion_matrix(cm, plot_type):
     plt.tight_layout()
     plt.show()
 
-def compute_prec_rec_f1(cm, dec_thresh):
+def compute_prec_rec_f1(cm):
     
     TN = cm[0, 0]
     FP = cm[0, 1]
     FN = cm[1, 0]
     TP = cm[1, 1]
 
-    precision = TP / (TP + FP)
-    recall = TP / (TP + FN)
-    f1 = 2 * ((precision * recall) / (precision + recall))
+    # preven division by zero
+    epsilon = 1e-8
 
-    print(f"Precision: {precision:.4f}, Decision Threshold: {dec_thresh}")
-    print(f"Recall: {recall:.4f}, Decision Threshold: {dec_thresh}")
-    print(f"F1 score: {f1:.4f}, Decision Threshold {dec_thresh}")
-    
-    
-def compute_roc_auc(net, test_loader):
+    precision = TP / (TP + FP + epsilon)
+    recall = TP / (TP + FN + epsilon)
+    f1 = 2 * ((precision * recall) / (precision + recall + epsilon))
 
+    return precision, recall, f1 
+    
+def get_all_probs(net, test_loader):
     net.eval()
-
     all_probs = []
     all_labels = []
     
@@ -219,25 +199,11 @@ def compute_roc_auc(net, test_loader):
             all_probs.extend(probs.cpu().numpy().flatten())
             all_labels.extend(labels.cpu().numpy().flatten())
 
-    roc_auc = roc_auc_score(all_labels, all_probs)
     
-    return roc_auc
+    return np.array(all_probs), np.array(all_labels)
 
-def plot_roc_curve(net, test_loader):
+def plot_roc_curve(all_labels, all_probs):
     
-    net.eval()
-    
-    all_probs = []
-    all_labels = []
-    
-    with torch.no_grad():
-        for inputs, labels in test_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = net(inputs)
-            probs = torch.sigmoid(outputs)
-            all_probs.extend(probs.cpu().numpy().flatten())
-            all_labels.extend(labels.cpu().numpy().flatten())
-
     fpr, tpr, _ = roc_curve(all_labels, all_probs)
     roc_auc = auc(fpr, tpr)
 
@@ -253,6 +219,47 @@ def plot_roc_curve(net, test_loader):
     plt.grid(True)
     plt.show()
 
+def get_best_thresh(all_labels, all_probs):
+    
+    best_f1 = 0
+    best_thresh = 0
+    best_cm = None
+
+    results = []
+
+    for decision in np.linspace(0.05, 0.95, 50):
+
+        preds = (all_probs >= decision).astype(int)
+        conf_mat = confusion_matrix(all_labels, preds)
+        precision, recall, f1 = compute_prec_rec_f1(conf_mat)
+
+        results.append({
+            "threshold": decision,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1})
+
+        if f1 > best_f1:
+            best_f1 = f1
+            best_thresh = decision
+            best_cm = conf_mat
+
+    return best_thresh, best_cm, results
+
+def plot_prec_rec_f1_thresh(best_thresh, df_results):
+    
+    plt.figure(figsize=(8, 5))
+    plt.plot(df_results["threshold"], df_results["precision"], label = "Precision", marker = 'o')
+    plt.plot(df_results["threshold"], df_results["recall"], label = "Recall", marker = 'o')
+    plt.plot(df_results["threshold"], df_results["f1"], label = "F1 Score", marker = 'o')
+    plt.axvline(best_thresh, color = 'red', linestyle = "--", label = f"Best F1 Threshold: {best_thresh:.2f}")
+    plt.xlabel("Decision Threshold")
+    plt.ylabel("Score")
+    plt.title("Precision, Recall, F1 vs Decision Threshold")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+    
 def main():
     
     # Initial training using BCE with logits loss
@@ -263,16 +270,22 @@ def main():
                                                                               epochs, 
                                                                               kernel_sizes)
     print_results(training_loss, testing_loss, test_acc, training_acc)
-    for decision in np.arange(0.1, 1, 0.1):
-        conf_mat = calculate_confusion_matrix(net, test_loader, decision)
-        plot_confusion_matrix(conf_mat, "raw")
-        conf_mat_norm = conf_mat.astype("float") / conf_mat.sum(axis = 1)[:, np.newaxis]
-        plot_confusion_matrix(conf_mat_norm, "norm")
-        compute_prec_rec_f1(conf_mat, decision)
 
-    auc = compute_roc_auc(net, test_loader)
-    print(f"ROC-AUC Score: {auc:.4f}")
-    plot_roc_curve(net, test_loader)
+    all_probs, all_labels = get_all_probs(net, test_loader)
+    best_thresh, best_cm, results = get_best_thresh(all_labels, all_probs)
+
+    df_results = pd.DataFrame(results).round(3)
+
+    print(f"\nTop 5 thresholds by F1 score:")
+    print(df_results.sort_values(by = "f1", ascending = False).head())
+
+    plot_prec_rec_f1_thresh(best_thresh, df_results)
+
+    # Confusion Matrix / ROC
+    best_conf_mat_norm = best_cm.astype("float") / best_cm.sum(axis = 1)[:, np.newaxis]
+    plot_confusion_matrix(best_cm, "raw")
+    plot_confusion_matrix(best_conf_mat_norm, "norm")
+    plot_roc_curve(all_labels, all_probs)
 
     
 if __name__ == "__main__":
