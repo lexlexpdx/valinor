@@ -3,7 +3,8 @@
  # @ Create Time: 2026-02-17 09:49:53
  # @ Class: CS440
  # @ Assignment: Final Project
- # @ Description: This file contains code for the training and evaluation loops for model.py
+ # @ Description: This file contains code for model training, evaluation, and
+                  predictions. 
  '''
 
 # ---------------------------------------------
@@ -20,14 +21,6 @@ import pandas as pd
 import metrics
 import visuals
 
-# ----------------------------------------------
-# Load data, normalize, and create dataloaders
-# ----------------------------------------------
-
-X_train, X_test, y_train, y_test = model.load_train_test_data()
-X_train_norm, X_test_norm = model.z_score_normalize(X_train, X_test)
-train_loader, test_loader = model.create_dataloaders(X_train_norm, y_train, 
-                                                     X_test_norm, y_test)
 
 # ---------------------------------------------
 # Hyperparameters
@@ -37,6 +30,20 @@ learning_rate = 1e-5
 epochs = 10
 kernel_sizes = [15, 7, 3]
 dec_thresh = 0.3
+
+# ---------------------------------------------
+# Reproducibility
+# ---------------------------------------------
+
+SEED = 42
+
+torch.manual_seed(SEED)
+np.random.seed(SEED)
+
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+
 
 # ---------------------------------------------
 # Train/test loop
@@ -57,9 +64,9 @@ def run_experiment(train_loader, test_loader, dec_thresh, learning_rate = 0.001,
 
     Args:
         train_loader (torch.utils.data.DataLoader): DataLoader for the training 
-            dataset. Yields batches of (inputs, labels) as torch.Tensors
+            dataset.
         test_loader (torch.utils.data.DataLoader): DataLoader for the test
-            dataset. Yields batches of (inputs, labels) as torch.Tensors
+            dataset.
         dec_thresh (float): Decision threshold for convertin model outputs
             to binary predictions
         learning_rate (float, optional): Learning rate for the optimizer. 
@@ -112,7 +119,8 @@ def run_experiment(train_loader, test_loader, dec_thresh, learning_rate = 0.001,
         train_accuracy = correct_train / total_train
         training_acc.append(train_accuracy)
 
-        print(f"Epoch {epoch + 1}: Avg Training Loss: = {avg_training_loss:.4f}, Training Acc: {train_accuracy:.4f}")
+        print(f"""Epoch {epoch + 1}: Avg Training Loss: = {avg_training_loss:.4f}, 
+              Training Acc: {train_accuracy:.4f}""")
 
         # -----------------------
         # Testing the model
@@ -140,12 +148,30 @@ def run_experiment(train_loader, test_loader, dec_thresh, learning_rate = 0.001,
         test_accuracy = correct_test / total_test
         test_acc.append(test_accuracy)
 
-        print(f"Epoch {epoch + 1}, Test loss: {avg_test_loss:.4f}, Test acc: {test_accuracy:.4f}")
+        print(f"""Epoch {epoch + 1}, Test loss: {avg_test_loss:.4f}, Test acc: 
+              {test_accuracy:.4f}""")
 
     return training_loss, testing_loss, test_acc, training_acc, net
 
 
 def get_all_probs(net, test_loader):
+    """
+    Get all probabilities and related labels from the trained 1D CNN
+
+    This function extracts all labels and probabilities from the trained model
+    and returns them as numpy arrays for further determination of metrics.
+
+    Args:
+        net (torch.nn.Module): Trained CNN model
+        test_loader (torch.utils.data.DataLoader): DataLoader for the test
+            dataset.
+
+    Returns:
+        all_probs (np.ndarray): 1D numpy array of predicted probabilities 
+        all_labels (np.ndarray): 1D numpy array of true labels associated with
+                                 predicted probabilities
+    """
+
     net.eval()
     all_probs = []
     all_labels = []
@@ -166,13 +192,19 @@ def get_all_probs(net, test_loader):
     
 def main():
     
+    # Load and normalize data
+    X_train, X_test, y_train, y_test = model.load_train_test_data()
+    X_train_norm, X_test_norm = model.z_score_normalize(X_train, X_test)
+    train_loader, test_loader = model.create_dataloaders(X_train_norm, y_train, 
+                                                        X_test_norm, y_test)
     # Training
-    training_loss, testing_loss, test_acc, training_acc, net = run_experiment(train_loader, 
-                                                                              test_loader,
-                                                                              dec_thresh, 
-                                                                              learning_rate, 
-                                                                              epochs, 
-                                                                              kernel_sizes)
+    training_loss, testing_loss, test_acc, training_acc, net = run_experiment(
+                                                                train_loader, 
+                                                                test_loader,
+                                                                dec_thresh, 
+                                                                learning_rate, 
+                                                                epochs, 
+                                                                kernel_sizes)
 
     # Get all probabilities and labels
     all_probs, all_labels = get_all_probs(net, test_loader)
@@ -181,7 +213,7 @@ def main():
     best_thresh, best_cm, results = metrics.get_best_thresh(all_labels, all_probs)
     df_results = pd.DataFrame(results).round(3)
 
-    # Convert to per class percentages
+    # Normalize by true clas (row-wise) to obtain per-class percentages
     best_conf_mat_norm = best_cm.astype("float") / best_cm.sum(axis = 1)[:, np.newaxis]
 
     # Plot visuals
@@ -190,7 +222,12 @@ def main():
     visuals.plot_confusion_matrix(best_cm, "raw")
     visuals.plot_confusion_matrix(best_conf_mat_norm, "norm")
     visuals.plot_roc_curve(all_labels, all_probs)
-    visuals.print_results(training_loss, testing_loss, test_acc, training_acc, epochs, learning_rate)
+    visuals.print_results(training_loss, 
+                          testing_loss, 
+                          test_acc, 
+                          training_acc, 
+                          epochs, 
+                          learning_rate)
     
 if __name__ == "__main__":
     main()
