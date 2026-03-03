@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 # Download MIT-BIH Database with wfdb
 # -------------------------------------
 
-# wfdb.dl_database('mitdb', dl_dir = '../data')
+wfdb.dl_database('mitdb', dl_dir = '../data')
 
 # -------------------------------------
 # Config

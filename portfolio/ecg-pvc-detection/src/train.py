@@ -200,6 +200,8 @@ def compute_prec_rec_f1(cm, dec_thresh):
     print(f"Precision: {precision:.4f}, Decision Threshold: {dec_thresh}")
     print(f"Recall: {recall:.4f}, Decision Threshold: {dec_thresh}")
     print(f"F1 score: {f1:.4f}, Decision Threshold {dec_thresh}")
+
+    return precision, recall, f1
     
     
 def compute_roc_auc(net, test_loader):
@@ -263,13 +265,27 @@ def main():
                                                                               epochs, 
                                                                               kernel_sizes)
     print_results(training_loss, testing_loss, test_acc, training_acc)
-    for decision in np.arange(0.1, 1, 0.1):
-        conf_mat = calculate_confusion_matrix(net, test_loader, decision)
-        plot_confusion_matrix(conf_mat, "raw")
-        conf_mat_norm = conf_mat.astype("float") / conf_mat.sum(axis = 1)[:, np.newaxis]
-        plot_confusion_matrix(conf_mat_norm, "norm")
-        compute_prec_rec_f1(conf_mat, decision)
 
+    all_precision = [{}]
+    all_recall = [{}]
+    all_f1 = [{}]
+    
+    conf_mat = calculate_confusion_matrix(net, test_loader, decision)
+
+    for decision in np.arange(0.1, 1, 0.1):
+        precision, recall, f1 = compute_prec_rec_f1(conf_mat, decision)
+
+        all_precision.append(decision, precision)
+        all_recall.append(decision, recall)
+        all_f1.append(decision, f1)
+
+    print(all_precision)
+    print(all_recall)
+    print(all_f1)
+
+    conf_mat_norm = conf_mat.astype("float") / conf_mat.sum(axis = 1)[:, np.newaxis]
+    plot_confusion_matrix(conf_mat, "raw")
+    plot_confusion_matrix(conf_mat_norm, "norm")
     auc = compute_roc_auc(net, test_loader)
     print(f"ROC-AUC Score: {auc:.4f}")
     plot_roc_curve(net, test_loader)
