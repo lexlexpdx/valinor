@@ -1,27 +1,26 @@
 '''
  # @ Author: Lex Albrandt
  # @ Create Time: 2026-02-17 09:49:53
- # @ Description: This file contains code for the training and evaluation loops for model.py
+ # @ Class: CS440
+ # @ Assignment: Final Project
+ # @ Description: This file contains code for model training, evaluation, and
+                  predictions. 
  '''
 
+# ---------------------------------------------
 # Imports
+# ---------------------------------------------
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import model
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import roc_curve, auc
 import numpy as np
+import pandas as pd
+import metrics
+import visuals
 
-# ----------------------------------------------
-# Load data, normalize, and create dataloaders
-# ----------------------------------------------
-
-X_train, X_test, y_train, y_test = model.load_train_test_data()
-X_train_norm, X_test_norm = model.z_score_normalize(X_train, X_test)
-train_loader, test_loader = model.create_dataloaders(X_train_norm, y_train, X_test_norm, y_test)
 
 # ---------------------------------------------
 # Hyperparameters
@@ -33,12 +32,56 @@ kernel_sizes = [15, 7, 3]
 dec_thresh = 0.3
 
 # ---------------------------------------------
+# Reproducibility
+# ---------------------------------------------
+
+SEED = 42
+
+torch.manual_seed(SEED)
+np.random.seed(SEED)
+
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+
+
+# ---------------------------------------------
 # Train/test loop
 # ---------------------------------------------
 
+# Configure device to run on CUDA if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def run_experiment(train_loader, test_loader, dec_thresh, learning_rate = 0.001, epochs = 15, kernel_sizes = [15, 7, 3]):
+def run_experiment(train_loader, test_loader, dec_thresh, learning_rate = 0.001, 
+                   epochs = 15, kernel_sizes = [15, 7, 3]):
+    """
+    Train and evaluate a 1D CNN model on the provided dataset
+
+    This function handles the full training loop including forward pass, 
+    loss computation, backpropogation, and optimizer step. It also evaluates the 
+    model on the test set after each epoch. Binary predictions are computed using
+    the provided decision threshold.
+
+    Args:
+        train_loader (torch.utils.data.DataLoader): DataLoader for the training 
+            dataset.
+        test_loader (torch.utils.data.DataLoader): DataLoader for the test
+            dataset.
+        dec_thresh (float): Decision threshold for convertin model outputs
+            to binary predictions
+        learning_rate (float, optional): Learning rate for the optimizer. 
+            Defaults to 0.001.
+        epochs (int, optional): Number of training epochs. Defaults to 15.
+        kernel_sizes (list, optional): List of kernel sizes for each convolutional
+            layer in the model. Defaults to [15, 7, 3].
+
+    Returns:
+        training_loss (list of floats): Average training loss per epoch
+        testing_loss (List of floats): Average testing loss per epoch
+        test_acc (List of floats): Test set accuracy for each epoch
+        training_acc (List of foats): Training set accuracy for each epoch
+        net (torch.nn.Module): Trained CNN model
+    """
 
     net = model.Model(kernel_sizes).to(device)
     optimizer = optim.Adam(net.parameters(), lr = learning_rate)
@@ -76,7 +119,8 @@ def run_experiment(train_loader, test_loader, dec_thresh, learning_rate = 0.001,
         train_accuracy = correct_train / total_train
         training_acc.append(train_accuracy)
 
-        print(f"Epoch {epoch + 1}: Avg Training Loss: = {avg_training_loss:.4f}, Training Acc: {train_accuracy:.4f}")
+        print(f"""Epoch {epoch + 1}: Avg Training Loss: = {avg_training_loss:.4f}, 
+              Training Acc: {train_accuracy:.4f}""")
 
         # -----------------------
         # Testing the model
@@ -104,110 +148,31 @@ def run_experiment(train_loader, test_loader, dec_thresh, learning_rate = 0.001,
         test_accuracy = correct_test / total_test
         test_acc.append(test_accuracy)
 
-        print(f"Epoch {epoch + 1}, Test loss: {avg_test_loss:.4f}, Test acc: {test_accuracy:.4f}")
+        print(f"""Epoch {epoch + 1}, Test loss: {avg_test_loss:.4f}, Test acc: 
+              {test_accuracy:.4f}""")
 
     return training_loss, testing_loss, test_acc, training_acc, net
 
 
-def print_results(training_loss, testing_loss, test_acc, training_acc):
-    
-    epochs_range = range(1, epochs + 1)
+def get_all_probs(net, test_loader):
+    """
+    Get all probabilities and related labels from the trained 1D CNN
 
-    plt.figure()
-    plt.plot(epochs_range, training_loss, label = "Training Loss")
-    plt.plot(epochs_range, testing_loss, label = "Testing Loss")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title(f"Loss vs Epoch: LR = {learning_rate}, ")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-    plt.figure()
-    plt.plot(epochs_range, training_acc, label = "Training Accuracy")
-    plt.plot(epochs_range, test_acc, label = "Testing Accuracy")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title(f"Accuracy vs Epoch: LR = {learning_rate}, ")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+    This function extracts all labels and probabilities from the trained model
+    and returns them as numpy arrays for further determination of metrics.
 
-def calculate_confusion_matrix(net, test_loader, dec_thresh):
-    
-    net.eval()
-    all_preds = []
-    all_labels = []
-    
-    with torch.no_grad():
-        for inputs, labels in test_loader:
-            inputs = inputs.to(device)
-            outputs = net(inputs)
-            preds = (torch.sigmoid(outputs) >= dec_thresh).float()
+    Args:
+        net (torch.nn.Module): Trained CNN model
+        test_loader (torch.utils.data.DataLoader): DataLoader for the test
+            dataset.
 
-            all_preds.extend(preds.cpu().numpy().flatten())
-            all_labels.extend(labels.numpy().flatten())
-
-    cm = confusion_matrix(all_labels, all_preds)
-    
-    return cm
-    
-
-def plot_confusion_matrix(cm, plot_type):
-   
-    if plot_type == "raw":
-        plt.figure()
-        plt.imshow(cm)
-        plt.title("Raw Confusion Matrix")
-        plt.xlabel("Predicted Label")
-        plt.ylabel("True label")
-        plt.xticks([0, 1], ["Normal", "PVC"])
-        plt.yticks([0, 1], ["Normal", "PVC"])
-
-        for i in range(cm.shape[0]):
-            for j in range(cm.shape[1]):
-                plt.text(j, i, cm[i, j], ha = "center", va = "center")
-    
-    if plot_type == "norm":
-        plt.figure()
-        plt.imshow(cm)
-        plt.title("Normalized Confusion Matrix")
-        plt.xlabel("Predicted Label")
-        plt.ylabel("True label")
-        plt.xticks([0, 1], ["Normal", "PVC"])
-        plt.yticks([0, 1], ["Normal", "PVC"])
-
-        for i in range(cm.shape[0]):
-            for j in range(cm.shape[1]):
-                value = cm[i, j] * 100
-                plt.text(j, i, f"{value:.1f}%")
-
-    plt.colorbar()
-    plt.tight_layout()
-    plt.show()
-
-def compute_prec_rec_f1(cm, dec_thresh):
-    
-    TN = cm[0, 0]
-    FP = cm[0, 1]
-    FN = cm[1, 0]
-    TP = cm[1, 1]
-
-    precision = TP / (TP + FP)
-    recall = TP / (TP + FN)
-    f1 = 2 * ((precision * recall) / (precision + recall))
-
-    print(f"Precision: {precision:.4f}, Decision Threshold: {dec_thresh}")
-    print(f"Recall: {recall:.4f}, Decision Threshold: {dec_thresh}")
-    print(f"F1 score: {f1:.4f}, Decision Threshold {dec_thresh}")
-
-    return precision, recall, f1
-    
-    
-def compute_roc_auc(net, test_loader):
+    Returns:
+        all_probs (np.ndarray): 1D numpy array of predicted probabilities 
+        all_labels (np.ndarray): 1D numpy array of true labels associated with
+                                 predicted probabilities
+    """
 
     net.eval()
-
     all_probs = []
     all_labels = []
     
@@ -221,75 +186,48 @@ def compute_roc_auc(net, test_loader):
             all_probs.extend(probs.cpu().numpy().flatten())
             all_labels.extend(labels.cpu().numpy().flatten())
 
-    roc_auc = roc_auc_score(all_labels, all_probs)
     
-    return roc_auc
+    return np.array(all_probs), np.array(all_labels)
 
-def plot_roc_curve(net, test_loader):
     
-    net.eval()
-    
-    all_probs = []
-    all_labels = []
-    
-    with torch.no_grad():
-        for inputs, labels in test_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = net(inputs)
-            probs = torch.sigmoid(outputs)
-            all_probs.extend(probs.cpu().numpy().flatten())
-            all_labels.extend(labels.cpu().numpy().flatten())
-
-    fpr, tpr, _ = roc_curve(all_labels, all_probs)
-    roc_auc = auc(fpr, tpr)
-
-    plt.figure()
-    plt.plot(fpr, tpr, color="darkorange", lw = 2, label = f'ROC curve (AUC = {roc_auc:.4f})')
-    plt.plot([0, 1], (0, 1), color = "navy", lw = 2, linestyle = "--")
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.title("Receiver Operating Characteristic")
-    plt.legend(loc = "lower right")
-    plt.grid(True)
-    plt.show()
-
 def main():
     
-    # Initial training using BCE with logits loss
-    training_loss, testing_loss, test_acc, training_acc, net = run_experiment(train_loader, 
-                                                                              test_loader,
-                                                                              dec_thresh, 
-                                                                              learning_rate, 
-                                                                              epochs, 
-                                                                              kernel_sizes)
-    print_results(training_loss, testing_loss, test_acc, training_acc)
+    # Load and normalize data
+    X_train, X_test, y_train, y_test = model.load_train_test_data()
+    X_train_norm, X_test_norm = model.z_score_normalize(X_train, X_test)
+    train_loader, test_loader = model.create_dataloaders(X_train_norm, y_train, 
+                                                        X_test_norm, y_test)
+    # Training
+    training_loss, testing_loss, test_acc, training_acc, net = run_experiment(
+                                                                train_loader, 
+                                                                test_loader,
+                                                                dec_thresh, 
+                                                                learning_rate, 
+                                                                epochs, 
+                                                                kernel_sizes)
 
-    all_precision = [{}]
-    all_recall = [{}]
-    all_f1 = [{}]
-    
-    conf_mat = calculate_confusion_matrix(net, test_loader, decision)
+    # Get all probabilities and labels
+    all_probs, all_labels = get_all_probs(net, test_loader)
 
-    for decision in np.arange(0.1, 1, 0.1):
-        precision, recall, f1 = compute_prec_rec_f1(conf_mat, decision)
+    # Gather metrics
+    best_thresh, best_cm, results = metrics.get_best_thresh(all_labels, all_probs)
+    df_results = pd.DataFrame(results).round(3)
 
-        all_precision.append(decision, precision)
-        all_recall.append(decision, recall)
-        all_f1.append(decision, f1)
+    # Normalize by true clas (row-wise) to obtain per-class percentages
+    best_conf_mat_norm = best_cm.astype("float") / best_cm.sum(axis = 1)[:, np.newaxis]
 
-    print(all_precision)
-    print(all_recall)
-    print(all_f1)
-
-    conf_mat_norm = conf_mat.astype("float") / conf_mat.sum(axis = 1)[:, np.newaxis]
-    plot_confusion_matrix(conf_mat, "raw")
-    plot_confusion_matrix(conf_mat_norm, "norm")
-    auc = compute_roc_auc(net, test_loader)
-    print(f"ROC-AUC Score: {auc:.4f}")
-    plot_roc_curve(net, test_loader)
-
+    # Plot visuals
+    visuals.plot_results_table(df_results)
+    visuals.plot_prec_rec_f1_thresh(best_thresh, df_results)
+    visuals.plot_confusion_matrix(best_cm, "raw")
+    visuals.plot_confusion_matrix(best_conf_mat_norm, "norm")
+    visuals.plot_roc_curve(all_labels, all_probs)
+    visuals.print_results(training_loss, 
+                          testing_loss, 
+                          test_acc, 
+                          training_acc, 
+                          epochs, 
+                          learning_rate)
     
 if __name__ == "__main__":
     main()
