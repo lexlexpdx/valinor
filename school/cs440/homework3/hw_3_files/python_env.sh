@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -e                  # Exit on error
 
 #------------------------------------------
 # Config
@@ -26,46 +25,39 @@ echo "Upgrading pip..."
 pip install --upgrade pip
 
 echo "Installing packages..."
+echo "--------------------------------"
 
-# Install jupyter notebooks
-echo "Installing jupyter..."
-pip install jupyter
+# Install PyTorch
+echo "Installing PyTorch"
+pip install torch torchvision torchaudio
 
 # Install numpy
 echo "Installing numpy..."
 pip install numpy
 
-# Install scipy
-echo "Installing scipy..."
-pip install scipy
+# Install pandas
+echo "Installing pandas..."
+pip install pandas
+
+# Install scikit learn
+echo "Installing scikit-learn"
+pip install -U scikit-learn
+
+# Install Jupyter Notebook
+echo "Installing jupyter notebook"
+pip install jupyter
+
+# # Install scipy
+# echo "Installing scipy..."
+# pip install scipy
 
 # Install matplotlib
 echo "Installing matplotlib..."
 pip install matplotlib
 
-# Install pandas
-echo "Installing pandas..."
-pip install pandas
-
-# Install jupyter notebook
-echo "Installing jupyter notebook..."
-pip install notebook
-
-# Install jupytext
-echo "Installing jupytext"
-pip install jupytext
-
-# Install WFDB library
-#echo "Installing WFBD library"
-#pip install wfdb
-
-# Install Neurokit library
-#echo "Installing NeuroKit library"
-#pip install neurokit2
-
-# Install sklearn
-echo "Installing Sklearn"
-pip install scikit-learn
+# # Install yfinance
+# echo "Installing yfinance..."
+# pip install yfinance
 
 #------------------------------------------
 # Info printout

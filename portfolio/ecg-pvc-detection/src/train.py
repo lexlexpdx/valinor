@@ -31,26 +31,14 @@ epochs = 10
 kernel_sizes = [15, 7, 3]
 dec_thresh = 0.3
 
-# ---------------------------------------------
-# Reproducibility
-# ---------------------------------------------
 
-SEED = 42
-
-torch.manual_seed(SEED)
-np.random.seed(SEED)
-
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(SEED)
-    torch.cuda.manual_seed_all(SEED)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # ---------------------------------------------
 # Train/test loop
 # ---------------------------------------------
 
-# Configure device to run on CUDA if available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def run_experiment(train_loader, test_loader, dec_thresh, learning_rate = 0.001, 
                    epochs = 15, kernel_sizes = [15, 7, 3]):

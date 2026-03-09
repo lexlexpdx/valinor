@@ -133,6 +133,10 @@ class Eval(Interpreter):
     def idx(self, obj, expr):
         val = self.visit(obj)
         idx = self.visit(expr)
+        if not isinstance(val, list):
+            raise Exception(f"[Stmt2] Indexing requires a range, got {val}")
+        if not isinstance(idx, int):
+            raise Exception(f"[Stmt2] Index must be an integer, got {idx}")
         return val[idx]
 
     def rng(self, lo_exp, hi_exp):
@@ -142,23 +146,98 @@ class Eval(Interpreter):
 
     def assign(self, id, expr):
         val = self.visit(expr)
-        self.env.extend(str(id), val)
+        self.env.update(str(id), val)
 
+    def block(self, first, *rest):
+        self.env.push_scope()
+        try:
+            self.visit(first)
+            for stmt in rest:
+                self.visit(stmt)
+        finally:
+            self.env.pop_scope()
+            
+    def prstmt(self, val):
+        print(self.visit(val))
 
+    def add(self, left, right) -> int:
+        xv = self.visit(left)
+        yv = self.visit(right)
+        if not isinstance(xv, int) or not isinstance(yv, int):
+            raise Exception(f"[Stmt2] Arith op expects int operands, got {xv} and {yv}")
+        return xv + yv
 
-    # def add(self, left, right) -> int:
-    #     return self.visit(left) + self.visit(right)
+    def sub(self, left, right) -> int:
+        xv = self.visit(left)
+        yv = self.visit(right)
+        if not isinstance(xv, int) or not isinstance(yv, int):
+            raise Exception(f"[Stmt2] Arith op expects int operands, got {xv} and {yv}")
+        return xv - yv
 
-    # def sub(self, left, right) -> int:
-    #     return self.visit(left) - self.visit(right)
+    def mul(self, left, right) -> int:
+        xv = self.visit(left)
+        yv = self.visit(right)
+        if not isinstance(xv, int) or not isinstance(yv, int):
+            raise Exception(f"[Stmt2] Arith op expects int operands, got {xv} and {yv}")
+        return xv * yv
 
-    # def mul(self, left, right) -> int:
-    #     return self.visit(left) * self.visit(right)
+    def div(self, left, right) -> int:
+        xv = self.visit(left)
+        yv = self.visit(right)
+        if not isinstance(xv, int) or not isinstance(yv, int):
+            raise Exception(f"[Stmt2] Arith op expects int operands, got {xv} and {yv}")
+        return xv // yv
 
-    # def div(self, left, right) -> int:
-    #     return self.visit(left) / self.visit(right)
-    # ... need code
+    def less(self, left, right):
+        xv = self.visit(left)
+        yv = self.visit(right)
+        if not isinstance(xv, int) or not isinstance(yv, int):
+            raise Exception(f"[Stmt2] Relational op requires integer operands, got {xv} {yv}")
+        if xv < yv:
+            return 1
+        else:
+            return 0
 
+    def equal(self, left, right):
+        xv = self.visit(left)
+        yv = self.visit(right)
+        if not isinstance(xv, int) or not isinstance(yv, int):
+            raise Exception(f"[Stmt2] Equality op requires integer operands, got {xv} {yv}")
+        if xv == yv:
+            return 1
+        else:
+            return 0
+
+    def ifstmt(self, cond, s1, s2 = None):
+        if self.visit(cond):
+            self.visit(s1)
+        elif s2 is not None:
+            self.visit(s2)
+
+    def whstmt(self, cond, s1):
+        while True:
+            val = self.visit(cond)
+            if val == 0 or (isinstance(val, list) and len(val) == 0):
+                break
+            self.visit(s1)
+
+    def forlp(self, id, rng_expr, body):
+        r = self.visit(rng_expr)
+        if not isinstance(r, list):
+            raise Exception(f"Expected range in for loop, got {r}")
+        
+        lo, hi = r[0], r[-1] + 1
+        
+        self.env.push_scope()
+        try:
+            self.env.extend(str(id), lo)
+        
+            while self.env.lookup(str(id)) < hi:
+                self.visit(body)
+                self.env.update(str(id), self.env.lookup(str(id)) + 1)
+        finally:
+            self.env.pop_scope()
+        
 # A new input routine - sys.stdin.read() 
 # - It allows source program be written in multiple lines
 #
@@ -166,80 +245,13 @@ import sys
 def main():
 
     env = Env()
-    # Env tests
-
-    # Test variable assignment
-    # env.extend('x', 42)
-    # id = env.lookup(('x'))
-    # print(id)
-
-    # # Test variable assignement when already declared
-    # env.extend('x', 42)
-    # env.extend('x', 43)
-
-    # Test undefined lookup
-    # env.lookup('y')
-
-    # Test update works
-    # env.update('x', 43)
-    # id = env.lookup('x')
-    # print(id)
-
-    # Test undefined update
-    # env.update('y', 10)
-
-    # Test popping scope when only one scope
-    # env.pop_scope()
-    # print(f"{len(env.scopes)}")
-
-    # Test adding new scope
-    # env.push_scope()
-    # print(f"{len(env.scopes)}")
-
-    # Test popping scope
-    # env.pop_scope()
-    # print(f"{len(env.scopes)}")
-
-    # Test extend scope
-    # env.extend('x', 42)
-    # env.push_scope()
-    # env.extend('x', 32)
-    # id = env.lookup('x')
-    # print(id)
-    # env.pop_scope()
-    # id = env.lookup('x')
-    # print(id)
-
-    # Test update in top scope
-    # env.extend('x', 10)
-    # env.push_scope()
-    # env.extend('y', 20)
-    # env.update('y', 30)
-    # print(env.lookup('y'))
-
-    # Test update in outer scope
-    # env.extend('x', 10)
-    # env.push_scope()
-    # env.update('x', 42)
-    # print(env.lookup('x'))
-
-    # Test undefined variable
-    # env.push_scope()
-    # env.update('x', 42)
-
-    # Test shadow vs update
-    # env.extend('x', 1)
-    # env.push_scope()
-    # env.extend('x', 2)
-    # env.update('x', 42)
-    # print(env.lookup('x'))
 
     try:
         prog = sys.stdin.read()
         tree = parser.parse(prog)
         print(prog)
         Eval(env).visit(tree)
-        print(env.lookup('x'))
+        # print(env.lookup('x'))
     except Exception as e:
         print(e)
 

@@ -1,15 +1,30 @@
 '''
  # @ Author: Lex Albrandt
  # @ Create Time: 2026-03-02 17:30:51
- # @ Description: This file contains code for all metrics computations
+ # @ Class: CS440
+ # @ Assignment: Final Project
+ # @ Description: This file contains functions for all metrics computations 
  '''
 
+# --------------------------------------
 # Imports
+# --------------------------------------
+
 import numpy as np
 from sklearn.metrics import confusion_matrix
 
+
 def get_best_thresh(all_labels, all_probs):
+    """
     
+
+    Args:
+        all_labels (_type_): _description_
+        all_probs (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     best_f1 = 0
     best_thresh = 0
     best_cm = None
