@@ -123,3 +123,21 @@ def plot_results_table(df):
 
     plt.title("Top Thresholds by F1 Score", fontsize = 16, pad = 3, fontweight = 'bold')
     plt.show()
+
+
+def plot_grid(beats, indices, title, n=6):
+    
+    fig, axes = plt.subplots(2, 3, figsize = (10, 6))
+    axes = axes.flatten()
+    
+    for i in range(n):
+        
+        idx = indices[i]
+        axes[i].plot(beats[idx])
+        axes[i].set_title(f"Beat {idx}")
+        axes[i].set_xticks([])
+        axes[i].set_yticks([])
+
+    fig.suptitle(title)
+    plt.tight_layout()
+    plt.show()

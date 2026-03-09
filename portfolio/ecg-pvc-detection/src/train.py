@@ -15,7 +15,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import model
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import metrics
@@ -163,6 +162,7 @@ def get_all_probs(net, test_loader):
     net.eval()
     all_probs = []
     all_labels = []
+    all_beats = []
     
     with torch.no_grad():
         for inputs, labels in test_loader:
@@ -173,9 +173,10 @@ def get_all_probs(net, test_loader):
 
             all_probs.extend(probs.cpu().numpy().flatten())
             all_labels.extend(labels.cpu().numpy().flatten())
+            all_beats.extend(inputs.cpu().numpy().squeeze(1))
 
     
-    return np.array(all_probs), np.array(all_labels)
+    return np.array(all_probs), np.array(all_labels), np.array(all_beats)
 
     
 def main():
@@ -195,11 +196,13 @@ def main():
                                                                 kernel_sizes)
 
     # Get all probabilities and labels
-    all_probs, all_labels = get_all_probs(net, test_loader)
+    all_probs, all_labels, all_beats = get_all_probs(net, test_loader)
 
     # Gather metrics
     best_thresh, best_cm, results = metrics.get_best_thresh(all_labels, all_probs)
     df_results = pd.DataFrame(results).round(3)
+    preds = (all_probs >= best_thresh).astype(int)
+    tp_idx, tn_idx, fp_idx, fn_idx = metrics.get_conf_mat_indices(preds, all_labels)
 
     # Normalize by true clas (row-wise) to obtain per-class percentages
     best_conf_mat_norm = best_cm.astype("float") / best_cm.sum(axis = 1)[:, np.newaxis]
@@ -216,6 +219,10 @@ def main():
                           training_acc, 
                           epochs, 
                           learning_rate)
-    
+    visuals.plot_grid(all_beats, tp_idx, "True Positives")
+    visuals.plot_grid(all_beats, fn_idx, "False Negatives")
+    visuals.plot_grid(all_beats, fp_idx, "False Positives")
+    visuals.plot_grid(all_beats, tn_idx, "True Negatives")
+
 if __name__ == "__main__":
     main()

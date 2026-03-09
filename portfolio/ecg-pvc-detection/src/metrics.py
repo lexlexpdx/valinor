@@ -66,3 +66,11 @@ def compute_prec_rec_f1(cm):
     f1 = 2 * ((precision * recall) / (precision + recall + epsilon))
 
     return precision, recall, f1 
+
+def get_conf_mat_indices(preds, all_labels):
+    tp_idx = np.where((preds == 1) & (all_labels == 1))[0]
+    tn_idx = np.where((preds == 0) & (all_labels == 0))[0]
+    fp_idx = np.where((preds == 1) & (all_labels == 0))[0]
+    fn_idx = np.where((preds == 0) & (all_labels == 1))[0]
+
+    return tp_idx, tn_idx, fp_idx, fn_idx
