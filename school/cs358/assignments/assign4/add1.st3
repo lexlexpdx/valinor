@@ -1,0 +1,8 @@
+{
+    def add(x): {
+        def addx(y): return x + y;
+        return addx
+    };
+    var f = add(1);
+    print(f(2))
+}
