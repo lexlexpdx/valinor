@@ -1,0 +1,8 @@
+Lex Albrandt
+CS358
+Assignment 4 report
+
+All of the programs work successfully on all tests. 
+
+The recursion was difficult to figure out. I discovered that I needed to use the stored
+environment to become the new closure's environment. After that everything worked well.

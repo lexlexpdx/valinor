@@ -1,0 +1,9 @@
+Lex Albrandt
+CS 358
+Assignment 3 report
+
+1. Status of program:
+    - The program runs through all tests as expected and does not have any remaining issues
+2. Experience and lessons:
+    - Once again, I found the placing of semicolons in the .st2 programs to be troublesome, but with lots of
+    troubleshooting I finally got everything to work.
