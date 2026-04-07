@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.feature_selection import SelectKBest, f_classif
 
 # %% [markdown]
 # ## Pipeline Step 1: Data loading and inspection  
@@ -128,7 +129,6 @@ plt.show()
 # ## Correlation matrix  
 #   
 
-
 # %%
 # All columns are already numeric columns
 corr = X_feat.corr()
@@ -169,4 +169,5 @@ plt.title("Updated feature correlation matrix")
 plt.show()
 
 
-# %%
+# %% [markdown]
+# ## 
