@@ -144,20 +144,20 @@ class Eval(Interpreter):
         val = self.visit(expr)
         self.env.extend(str(id), val)
 
+    def add(self, left, right) -> int:
+        return self.visit(left) + self.visit(right)
 
+    def sub(self, left, right) -> int:
+        return self.visit(left) - self.visit(right)
 
-    # def add(self, left, right) -> int:
-    #     return self.visit(left) + self.visit(right)
+    def mul(self, left, right) -> int:
+        return self.visit(left) * self.visit(right)
 
-    # def sub(self, left, right) -> int:
-    #     return self.visit(left) - self.visit(right)
-
-    # def mul(self, left, right) -> int:
-    #     return self.visit(left) * self.visit(right)
-
-    # def div(self, left, right) -> int:
-    #     return self.visit(left) / self.visit(right)
-    # ... need code
+    def div(self, left, right) -> int:
+        return self.visit(left) / self.visit(right)
+    
+    def print(self, expr):
+        print(self.visit(expr))
 
 # A new input routine - sys.stdin.read() 
 # - It allows source program be written in multiple lines
