@@ -51,6 +51,9 @@ pip install notebook
 echo "Installing Jupytext"
 pip install jupytext
 
+# Install Seaborn
+echo "Installing seaborn"
+pip install seaborn
 
 # # Install scipy
 # echo "Installing scipy..."

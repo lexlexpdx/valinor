@@ -27,10 +27,6 @@ pip install --upgrade pip
 echo "Installing packages..."
 echo "--------------------------------"
 
-# Install PyTorch
-echo "Installing PyTorch"
-pip install torch torchvision torchaudio
-
 # Install numpy
 echo "Installing numpy..."
 pip install numpy
@@ -39,9 +35,9 @@ pip install numpy
 echo "Installing pandas..."
 pip install pandas
 
-# Install scikit learn
-echo "Installing scikit-learn"
-pip install -U scikit-learn
+# # Install scikit learn
+# echo "Installing scikit-learn"
+# pip install -U scikit-learn
 
 # # Install scipy
 # echo "Installing scipy..."
@@ -51,9 +47,13 @@ pip install -U scikit-learn
 echo "Installing matplotlib..."
 pip install matplotlib
 
-# Install yfinance
-echo "Installing yfinance..."
-pip install yfinance
+# Install Jupyter Notebooks
+echo "Installing Jupyter Notebook"
+pip install notebook
+
+# Install Jupytext
+echo "Installing Jupytext"
+pip install jupytext
 
 #------------------------------------------
 # Info printout
