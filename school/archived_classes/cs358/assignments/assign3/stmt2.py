@@ -148,6 +148,22 @@ class Eval(Interpreter):
         val = self.visit(expr)
         self.env.update(str(id), val)
 
+<<<<<<< HEAD:school/cs358/assignments/assign3/stmt2.py
+    def add(self, left, right) -> int:
+        return self.visit(left) + self.visit(right)
+
+    def sub(self, left, right) -> int:
+        return self.visit(left) - self.visit(right)
+
+    def mul(self, left, right) -> int:
+        return self.visit(left) * self.visit(right)
+
+    def div(self, left, right) -> int:
+        return self.visit(left) / self.visit(right)
+    
+    def print(self, expr):
+        print(self.visit(expr))
+=======
     def block(self, first, *rest):
         self.env.push_scope()
         try:
@@ -197,6 +213,7 @@ class Eval(Interpreter):
             return 1
         else:
             return 0
+>>>>>>> a4733db619dfac6bd99e30834f9282903c553d35:school/archived_classes/cs358/assignments/assign3/stmt2.py
 
     def equal(self, left, right):
         xv = self.visit(left)
