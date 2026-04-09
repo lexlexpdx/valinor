@@ -9,17 +9,18 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.feature_selection import SelectKBest, f_classif
+
+from sklearn.impute import SimpleImputer
 
 # %% [markdown]
-# ## Pipeline Step 1: Data loading and inspection  
+# # Step 1: Data loading, inspection, and cleaning
 #   
 # The first step in our ML pipeline is loading the csv file using the `pandas` library. 
-# We will also output the first 10 rows of data to inspect. 
+# We will also output the first 5 rows of data to inspect. 
 
 # %%
 df = pd.read_csv('../data/skyserver_classroom.csv')
-print(df.head(10))
+print(df.head())
 print(f"\nData Rows and Columns: {df.shape}")
 
 # %% [markdown]
@@ -68,106 +69,61 @@ missing_count = df.isna().sum()
 print(missing_count)
 
 # %% [markdown]
-# Based on the output above there are no missing values in the dataset.
-#   
-# ## Pipeline Step 2: Explore
-#   
-# The next step in our ML pipeline is exploration of the data, which includes  
-# visualizing our data using a Scatter Plot, and using `pairplot` to determine which
-# features separate our classes. We can do this with the `matplotlib` library.  
-# Our target vector in this dataset will be the `Class` column. 
-# Our feature matrix will be all other columns. We can also examine the distributions 
-# for each class to determine if our dataset is imbalanced.
+# Based on the output above there are no missing values in the dataset. However, 
+# we will also use the `SimpleImputer` method from `sklearn` to impute any missing 
+# values.
 
 # %%
-X_feat = df.drop('class', axis = 1)
-y_tar = df['class']
+numeric_cols = ["ra", 
+                "mag_u", 
+                "mag_g", 
+                "mag_r", 
+                "mag_i", 
+                "mag_z", 
+                "dec", 
+                "redshift", 
+                "u_g", 
+                "g_r", 
+                "r_i", 
+                "i_z"]
 
-counts = y_tar.value_counts()
-colors = ["red", "blue", "yellow"]
-
-ax = counts.plot(kind="bar", color = colors)
-ax.bar_label(ax.containers[0], padding = 3)
-plt.xlabel("Class")
-plt.ylabel("Count")
-plt.margins(y=0.1)
-plt.title("Class Distribution")
-plt.show()
-
+imputer = SimpleImputer(strategy = "median")
+df[numeric_cols] = imputer.fit_transform(df[numeric_cols])
+df = df.dropna()
+print(f"Rows after imputation and cleanup: {len(df)}")
 
 # %% [markdown]
-# From the graph above we can see that all classes have equal distribution. So our 
-# dataset is balanced. The next step in the exploration process is to see if we can 
-# find any features that separate the classes. We can do this using `pariplot` from 
-# the `seaborn` library. Since the pairplot is so large with all feature columns, 
-# we will break it up into a few different pairplots to better visualize the data.  
-# In the lines below we have separated the data into three subsets of our original 
-# dataframe.   
-#   
-
-# %%
-ra_mag = df[["class", "ra", "mag_u", "mag_g", "mag_r", "mag_i", "mag_z"]]
-bands_red = df[["class", "dec", "redshift", "u_g", "g_r", "r_i", "i_z"]]
-
-# %%
-fig_1 = sns.pairplot(ra_mag, hue="class", diag_kind = "hist")
-fig_1.figure.suptitle("SDSS Skyserver - Pairplot by Class", y = 1.05, fontsize = 14, fontweight = 'bold')
-sns.move_legend(fig_1, "upper center", bbox_to_anchor = (0.5, 1.01), ncol = 3, title = None, frameon = False)
-plt.show()
-
-# %%
-fig_2 = sns.pairplot(bands_red, hue="class", diag_kind = "hist")
-fig_2.figure.suptitle("SDSS Skyserver - Pairplot by Class", y = 1.05, fontsize = 14, fontweight = 'bold')
-sns.move_legend(fig_2, "upper center", bbox_to_anchor = (0.5, 1.01), ncol = 3, title = None, frameon = False)
-plt.show()
-
-# %% [markdown]
-# From our pairplots above we can see that there is a lot of overlap in many of the categories. 
-# The category that provides the most separtation is `redshift` when comparing to 
-# color indices.  
+# # Step 2: Deeper EDA  
 #   
 # ## Correlation matrix  
-#   
+# We can use a correlation matrix to see which features are most related to redshift.
 
 # %%
-# All columns are already numeric columns
-corr = X_feat.corr()
+corr = df[numeric_cols].corr()
 plt.figure(figsize = (8, 8))
 sns.heatmap(corr, annot = True, fmt = "0.2f", cmap = "RdBu_r", center = 0, square = True)
 plt.title("Feature correlation matrix")
 plt.show()
 
-# %% [markdown]
-# The correlation matrix above shows a high correlation between all of the wavelength 
-# magnitudes. We can make a correlation matrix that uses a subset to get a better 
-# view those correlations.
-
-# %%
-features = df[["mag_u", "mag_g", "mag_r", "mag_i", "mag_z"]]
-corr_2 = features.corr()
-sns.heatmap(corr_2, annot = True, fmt = "0.2f", cmap = "RdBu_r", center = 0, square = True)
-plt.title("Subset feature correlation matrix")
-plt.show()
+# Convert to a panda series and print
+corr_redshift = (
+    df[numeric_cols]
+    .corr()["redshift"]
+    .drop("redshift")
+    .sort_values(key = abs, ascending = False)
+)
+print(corr_redshift)
 
 # %% [markdown]
-# Based on the two correlation matrices and our pairplot, it is reasonable at this 
-# point in the exploration to drop the magnitude columns, and the `ra` and `dec` 
-# columns. The magnitude columns can be dropped because of high correlation, and 
-# `ra` and `dec` can be dropped because they are _positional_ values, and do not 
-# aid us in classification. We can look at using PCA later if we decide to use 
-# any of the magnitude columns for classifcation or regression.
+# From the heatmap and panda series above ,we can see that `mag_z` and `mag_i` are 
+# most closely correlated to `redshift`. We also want to look at some distribution 
+# plots for our `redishift`.  
 #   
 
 # %%
-# Update X-feat
-X_feat = df[["redshift", "u_g", "g_r", "r_i", "i_z"]]
+fig, axes = plt.subplots(1, 2, figsize = (10, 4))
+sns.histplot(data = df, x = "redshift", kde = True, ax = axes[0])
+axes[0].set_title("Redshift Distribution")
 
-# Updated correlation matrix
-corr_3 = X_feat.corr()
-sns.heatmap(corr_3, annot = True, fmt = "0.2f", cmap = "RdBu_r", center = 0, square = True)
-plt.title("Updated feature correlation matrix")
+sns.boxplot(data = df, x = "class", y = "redshift", ax = axes[1])
 plt.show()
-
-
-# %% [markdown]
-# ## 
