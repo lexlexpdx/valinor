@@ -127,3 +127,9 @@ axes[0].set_title("Redshift Distribution")
 
 sns.boxplot(data = df, x = "class", y = "redshift", ax = axes[1])
 plt.show()
+
+# %% [markdown]
+# # Step 3: Feature engineering  
+#   
+# There are already a number of features that have been "engineered" in the dataset. (See 
+# the description at the beginning of the notebook)
