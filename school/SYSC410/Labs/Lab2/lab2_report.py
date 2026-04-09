@@ -60,4 +60,9 @@
 #   
 # ## Effect of Column Removal on $R^2$ value  
 #   
-#
+# When experimenting with column removal and its effect on $R^2$, I discovered that 
+# `flipper_length` had the greatest impact on $R^2$, knocking the value to $55\%$, 
+# which is a significant blow. This matches our earlier discovery that flipper length 
+# and body mass are closely correlated.  
+#   
+# ![experiment screenshot](./experiment.png)
