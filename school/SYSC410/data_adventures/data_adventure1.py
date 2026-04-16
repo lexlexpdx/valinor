@@ -80,6 +80,7 @@ plt.tight_layout()
 plt.show()
 
 # %% [markdown]
+<<<<<<< HEAD
 # # Step 3: Feature Engineering  
 #   
 # Our dataset already has features that could be considered "engineered features." 
@@ -225,3 +226,9 @@ plt.show()
 # currently working on in the course. I am still working on understanding the dataset 
 # as a whole, as cosmology is not an area of study I have pursued, but I'm finding it 
 # interesting. 
+=======
+# # Step 3: Feature engineering  
+#   
+# There are already a number of features that have been "engineered" in the dataset. (See 
+# the description at the beginning of the notebook)
+>>>>>>> 52b8eee283550e5a0ff310f3be3de3b327f163f3
