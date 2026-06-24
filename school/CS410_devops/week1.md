@@ -97,3 +97,18 @@
         - Hostname: systemsec-01
         - Port: 22
         - Identities only yes
+
+## Day 2
+
+- Look at proxmox setup in the course website
+- Run the script (either available on the repo or website)
+- Get ssh key and setup the config file
+  - Host
+  - HostName 172.20.100.100
+  - HostKeyAlias <ppwazuh>
+  - User student
+- Config file -> ssh file on course site -> wildcard proxyjump
+- sudo apt install cowsay
+- Check laptop config for ssh key and gitlab
+- clone repo
+- Install opentofu
