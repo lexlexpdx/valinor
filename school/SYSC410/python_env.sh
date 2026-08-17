@@ -55,13 +55,17 @@ pip install jupytext
 echo "Installing seaborn"
 pip install seaborn
 
-# # Install scipy
-# echo "Installing scipy..."
-# pip install scipy
+# Install scipy
+echo "Installing scipy..."
+pip install scipy
 
-# # Install matplotlib
-# echo "Installing matplotlib..."
-# pip install matplotlib
+# Install matplotlib
+echo "Installing matplotlib..."
+pip install matplotlib
+
+# Install basemap
+echo "Installing Basemap"
+pip install basemap
 
 
 #------------------------------------------
